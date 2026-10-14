@@ -1,0 +1,15 @@
+# ~/.codex/config.toml — Phone MCP (Streamable HTTP + Bearer env ref).
+# Install: export PHONE_MCP_TOKEN=<from-dashboard-qr>  (never commit the token)
+#          codex mcp add phone-mcp --url https://192.168.1.50:8080/mcp \
+#            --bearer-token-env-var PHONE_MCP_TOKEN
+# Or append the block below. Verify: codex mcp list
+#
+# NOTE: Codex performs standard TLS verification and will reject the phone's
+# self-signed TOFU cert. Use the stdio bridge instead on LAN:
+#   codex mcp add phone-mcp --command node --args bridges/phone-mcp-bridge.mjs \
+#     --env PHONE_MCP_URL=https://192.168.1.50:8080/mcp \
+#     --env PHONE_MCP_TOKEN= --env PHONE_MCP_SHA256=
+
+[mcp_servers.phone-mcp]
+url = "https://192.168.1.50:8080/mcp"
+bearer_token_env_var = "PHONE_MCP_TOKEN"

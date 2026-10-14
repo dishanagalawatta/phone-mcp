@@ -1,0 +1,127 @@
+{
+  "_doc": "Shared parity vectors for Phone MCP harness-side logic. Single source of truth consumed by client/tests/test_vectors.py (Python client + bridges/phone-mcp-bridge.py) and client/node/test/test-vectors.mjs (Node client + bridges/phone-mcp-bridge.mjs). Add a vector here — never duplicate expected values across suites again.",
+  "tlsModes": [
+    {
+      "input": { "pin": "", "insecure": false, "cafile": "" },
+      "expected": { "rejectUnauthorized": true, "skipHostnameCheck": false, "verifyPin": false }
+    },
+    {
+      "input": { "pin": "AA:BB", "insecure": false, "cafile": "" },
+      "expected": { "rejectUnauthorized": false, "skipHostnameCheck": true, "verifyPin": true }
+    },
+    {
+      "input": { "pin": "", "insecure": false, "cafile": "/tmp/ca.pem" },
+      "expected": { "rejectUnauthorized": true, "skipHostnameCheck": true, "verifyPin": false }
+    },
+    {
+      "input": { "pin": "aabb", "insecure": false, "cafile": "/tmp/ca.pem" },
+      "expected": { "rejectUnauthorized": true, "skipHostnameCheck": true, "verifyPin": true }
+    },
+    {
+      "input": { "pin": "", "insecure": true, "cafile": "" },
+      "expected": { "rejectUnauthorized": false, "skipHostnameCheck": false, "verifyPin": false }
+    },
+    {
+      "input": { "pin": "", "insecure": true, "cafile": "/tmp/ca.pem" },
+      "expected": { "rejectUnauthorized": false, "skipHostnameCheck": true, "verifyPin": false }
+    }
+  ],
+  "headers": [
+    {
+      "token": "tok",
+      "protocol": "2025-06-18",
+      "method": "tools/call",
+      "expected": {
+        "Content-Type": "application/json",
+        "Accept": "application/json, text/event-stream",
+        "Authorization": "Bearer tok",
+        "MCP-Protocol-Version": "2025-06-18"
+      }
+    },
+    {
+      "token": "t",
+      "protocol": "2025-06-18",
+      "method": "initialize",
+      "expected": {
+        "Content-Type": "application/json",
+        "Accept": "application/json, text/event-stream",
+        "Authorization": "Bearer t"
+      }
+    },
+    {
+      "token": "t",
+      "protocol": "2025-06-18",
+      "method": "notifications/initialized",
+      "expected": {
+        "Content-Type": "application/json",
+        "Accept": "application/json, text/event-stream",
+        "Authorization": "Bearer t"
+      }
+    }
+  ],
+  "sse": [
+    {
+      "body": ": ping\n\ndata: {\"a\":1}\n\ndata: {\"b\":2}\n\n",
+      "expected": ["{\"a\":1}", "{\"b\":2}"]
+    },
+    {
+      "body": "",
+      "expected": []
+    },
+    {
+      "body": "data: {\"method\":\"notifications/x\"}\n\ndata: {\"id\":8,\"result\":{}}\n\n",
+      "expected": ["{\"method\":\"notifications/x\"}", "{\"id\":8,\"result\":{}}"]
+    }
+  ],
+  "budgets": {
+    "params": { "ceiling": 35000, "fast": 15000, "margin": 10000 },
+    "cases": [
+      {
+        "message": { "jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {} },
+        "expectedMs": 15000
+      },
+      {
+        "message": { "jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {} },
+        "expectedMs": 15000
+      },
+      {
+        "message": { "jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": { "name": "vibrate", "arguments": {} } },
+        "expectedMs": 15000
+      },
+      {
+        "message": { "jsonrpc": "2.0", "method": "notifications/initialized" },
+        "expectedMs": 15000
+      },
+      {
+        "message": { "jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": { "name": "audio_record", "arguments": { "durationMs": 2000 } } },
+        "expectedMs": 12000
+      },
+      {
+        "message": { "jsonrpc": "2.0", "id": 6, "method": "tools/call", "params": { "name": "sensors_read", "arguments": { "timeoutMs": 1500 } } },
+        "expectedMs": 11500
+      },
+      {
+        "message": { "jsonrpc": "2.0", "id": 7, "method": "tools/call", "params": { "name": "x", "arguments": { "durationMs": 3600000 } } },
+        "expectedMs": 35000
+      },
+      {
+        "message": { "jsonrpc": "2.0", "id": 8, "method": "tools/call", "params": { "name": "x", "arguments": { "durationMs": -5 } } },
+        "expectedMs": 15000
+      },
+      {
+        "message": null,
+        "expectedMs": 15000
+      }
+    ]
+  },
+  "fingerprints": {
+    "normalize": [
+      ["AA:bb:CC dd", "aabbccdd"],
+      ["", ""]
+    ],
+    "grouped": [
+      ["aabbcc", "AA:BB:CC"]
+    ],
+    "sha256abc": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+  }
+}

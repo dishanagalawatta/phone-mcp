@@ -1,0 +1,20 @@
+{
+  "name": "phone-mcp-client",
+  "version": "0.1.0",
+  "description": "Unified MCP client for Phone MCP — stdio bridge + harness installer (opencode, claude, codex, vscode, cursor, gemini, cline, windsurf)",
+  "type": "module",
+  "bin": {
+    "phone-mcp": "bin/phone-mcp.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test test/"
+  },
+  "keywords": ["mcp", "model-context-protocol", "android", "opencode", "claude", "codex"],
+  "license": "UNLICENSED",
+  "private": false,
+  "dependencies": {},
+  "devDependencies": {}
+}

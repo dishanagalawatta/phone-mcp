@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "phone-mcp": {
+      "command": "node",
+      "args": ["bridges/phone-mcp-bridge.mjs"],
+      "env": {
+        "PHONE_MCP_URL": "https://192.168.1.50:8080/mcp",
+        "PHONE_MCP_TOKEN": "${PHONE_MCP_TOKEN}",
+        "PHONE_MCP_SHA256": "${PHONE_MCP_SHA256}"
+      }
+    }
+  }
+}

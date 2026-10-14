@@ -1,0 +1,332 @@
+# Phone MCP CI: unit tests + lint + harness matrix on every push/PR.
+# No Gradle wrapper in repo: gradle/actions/setup-gradle installs the pinned version.
+# AGP 8.6 requires Gradle 8.7+; 8.9 is the pinned known-good (bump deliberately, both sides).
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  harness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Bridge unit tests
+        run: python3 -m unittest discover -s bridges -p "test_*.py" -v
+
+      - name: Syntax checks (node/python/bash)
+        run: |
+          node --check bridges/phone-mcp-bridge.mjs
+          python3 -m py_compile bridges/phone-mcp-bridge.py scripts/phone-mcp-smoke.py
+          bash -n scripts/configure-harness.sh scripts/export-ca.sh scripts/verify-mcp.sh
+
+      - name: Harness config schemas (no baked-in tokens)
+        run: |
+          python3 - <<'EOF'
+          import json, glob, re, tomllib
+          for f in sorted(glob.glob('config/harness-examples/*.json')):
+              body = open(f).read()
+              if 'vscode' in f:  # .vscode/mcp.json is JSONC by spec
+                  body = re.sub(r'(?m)^\s*//.*$', '', body)
+              json.loads(body)
+              print('JSON OK', f)
+          tomllib.load(open('config/harness-examples/codex.toml', 'rb'))
+          print('TOML OK codex.toml')
+          for f in glob.glob('config/harness-examples/*.json') + ['config/harness-examples/codex.toml']:
+              redacted = open(f).read()
+              for token in ('PHONE_MCP_TOKEN', 'phoneMcpToken'):
+                  redacted = redacted.replace(token, '')
+              assert 'Bearer ' not in redacted or 'Bearer $' in open(f).read() or 'Bearer {' in open(f).read(), f
+          print('no baked-in tokens')
+          EOF
+
+      - name: Node/Python TLS parity (6 modes)
+        run: |
+          echo "" | PHONE_MCP_URL=http://127.0.0.1:9/mcp PHONE_MCP_TOKEN=x \
+            node --input-type=module -e "
+          import { resolveTls } from './bridges/phone-mcp-bridge.mjs';
+          const cases = [
+            [{pin:'',insecure:false,cafile:''}, {rejectUnauthorized:true, skipHostnameCheck:false, verifyPin:false}],
+            [{pin:'AA:BB',insecure:false,cafile:''}, {rejectUnauthorized:false, skipHostnameCheck:true, verifyPin:true}],
+            [{pin:'',insecure:false,cafile:'/tmp/ca.pem'}, {rejectUnauthorized:true, skipHostnameCheck:true, verifyPin:false}],
+            [{pin:'aabb',insecure:false,cafile:'/tmp/ca.pem'}, {rejectUnauthorized:true, skipHostnameCheck:true, verifyPin:true}],
+            [{pin:'',insecure:true,cafile:''}, {rejectUnauthorized:false, skipHostnameCheck:false, verifyPin:false}],
+            [{pin:'',insecure:true,cafile:'/tmp/ca.pem'}, {rejectUnauthorized:false, skipHostnameCheck:true, verifyPin:false}],
+          ];
+          for (const [input, expected] of cases) {
+            if (JSON.stringify(resolveTls(input)) !== JSON.stringify(expected)) {
+              console.error('MISMATCH', JSON.stringify(input)); process.exit(1);
+            }
+          }
+          console.log('TLS parity OK');
+          process.exit(0);
+          "
+
+      - name: Node/Python timeout parity
+        run: |
+          python3 - <<'EOF' > /tmp/py-vectors.json
+          import importlib.util
+          spec = importlib.util.spec_from_file_location("b", "bridges/phone-mcp-bridge.py")
+          b = importlib.util.module_from_spec(spec); spec.loader.exec_module(b)
+          import json
+          msgs = [
+            {"jsonrpc":"2.0","id":1,"method":"initialize","params":{}},
+            {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}},
+            {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"vibrate","arguments":{}}},
+            {"jsonrpc":"2.0","method":"notifications/initialized"},
+            {"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"audio_record","arguments":{"durationMs":2000}}},
+            {"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"sensors_read","arguments":{"timeoutMs":1500}}},
+            {"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"x","arguments":{"durationMs":3600000}}},
+            {"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"x","arguments":{"durationMs":-5}}},
+            None,
+          ]
+          print(json.dumps([b.effective_timeout(m, 35000, 15000, 10000) for m in msgs]))
+          EOF
+          echo "" | PHONE_MCP_URL=http://127.0.0.1:9/mcp PHONE_MCP_TOKEN=x \
+            node --input-type=module -e "
+          import { readFileSync } from 'node:fs';
+          import { effectiveTimeout } from './bridges/phone-mcp-bridge.mjs';
+          const expected = JSON.parse(readFileSync('/tmp/py-vectors.json', 'utf8'));
+          const msgs = [
+            {jsonrpc:'2.0',id:1,method:'initialize',params:{}},
+            {jsonrpc:'2.0',id:2,method:'tools/list',params:{}},
+            {jsonrpc:'2.0',id:3,method:'tools/call',params:{name:'vibrate',arguments:{}}},
+            {jsonrpc:'2.0',method:'notifications/initialized'},
+            {jsonrpc:'2.0',id:5,method:'tools/call',params:{name:'audio_record',arguments:{durationMs:2000}}},
+            {jsonrpc:'2.0',id:6,method:'tools/call',params:{name:'sensors_read',arguments:{timeoutMs:1500}}},
+            {jsonrpc:'2.0',id:7,method:'tools/call',params:{name:'x',arguments:{durationMs:3600000}}},
+            {jsonrpc:'2.0',id:8,method:'tools/call',params:{name:'x',arguments:{durationMs:-5}}},
+            null,
+          ];
+          const got = msgs.map((m) => effectiveTimeout(m, { ceiling: 35000, fast: 15000, margin: 10000 }));
+          if (JSON.stringify(got) !== JSON.stringify(expected)) {
+            console.error('MISMATCH', JSON.stringify(got)); process.exit(1);
+          }
+          console.log('timeout parity OK: ' + JSON.stringify(got));
+          process.exit(0);
+          "
+
+      - name: Generator dry-run (no network)
+        run: |
+          rm -rf /tmp/gen && ./scripts/configure-harness.sh --url https://192.168.1.50:8080/mcp \
+            --token T --sha256 AA:BB:CC:DD --harness all --out /tmp/gen >/dev/null
+          test "$(ls /tmp/gen | wc -l)" = "9"
+          python3 -c "import json; [json.load(open(f'/tmp/gen/{n}')) for n in ('opencode.phone-mcp.json','cline.phone-mcp.json','windsurf.phone-mcp.json')]"
+
+      - name: Client unit + integration tests (no phone needed)
+        run: |
+          PYTHONPATH=client/src python3 -m unittest discover -s client/tests -v
+
+      - name: Client configure dry-run (9 harnesses, token-free)
+        run: |
+          pip install ./client -q
+          rm -rf /tmp/gen-client
+          phone-mcp configure --harness all --out /tmp/gen-client \
+            --url https://192.168.1.50:8080/mcp --token DUMMY-TOKEN >/dev/null
+          test "$(ls /tmp/gen-client | wc -l)" = "9"
+          python3 - <<'EOF'
+          import glob, json, tomllib
+          for f in sorted(glob.glob('/tmp/gen-client/*.json')):
+              json.load(open(f)); print('JSON OK', f)
+          # codex renders TOML: at least parses as text with the stdio block
+          toml = open('/tmp/gen-client/codex.phone-mcp.toml').read()
+          assert '[mcp_servers.phone-mcp]' in toml
+          print('TOML OK codex.phone-mcp.toml')
+          for f in glob.glob('/tmp/gen-client/*'):
+              body = open(f).read()
+              assert 'DUMMY-TOKEN' not in body, f'token leak in {f}'
+              stripped = body.replace('PHONE_MCP_TOKEN', '').replace('phoneMcpToken', '')
+              assert 'Bearer DUMMY' not in stripped, f'token leak in {f}'
+          print('client configs token-free')
+          EOF
+
+      - name: Client wheel builds (PyPI readiness, zero deps)
+        run: |
+          rm -rf /tmp/wheeltest && python3 -m pip wheel ./client --no-deps -w /tmp/wheeltest
+          python3 - <<'EOF'
+          import glob, zipfile
+          wh = glob.glob('/tmp/wheeltest/*.whl')[0]
+          names = zipfile.ZipFile(wh).namelist()
+          meta = zipfile.ZipFile(wh).read([n for n in names if n.endswith('METADATA')][0]).decode()
+          assert 'Requires-Dist' not in meta, 'client must stay dependency-free'
+          eps = zipfile.ZipFile(wh).read([n for n in names if n.endswith('entry_points.txt')][0]).decode()
+          assert 'phone-mcp' in eps, eps
+          assert any(n.endswith('phone_mcp_client/cli.py') for n in names)
+          print('WHEEL OK', wh)
+          EOF
+
+      - name: Node client tests (no phone needed)
+        run: |
+          node --check client/node/src/config.mjs
+          node --check client/node/src/tls.mjs
+          node --check client/node/src/protocol.mjs
+          node --check client/node/src/harnesses.mjs
+          node --check client/node/src/cli.mjs
+          node --test client/node/test/
+
+      - name: Node client configure dry-run (9 harnesses, token-free)
+        run: |
+          rm -rf /tmp/gen-node
+          node client/node/bin/phone-mcp.mjs configure --harness all --out /tmp/gen-node \
+            --url https://192.168.1.50:8080/mcp --token DUMMY-TOKEN >/dev/null
+          test "$(ls /tmp/gen-node | wc -l)" = "9"
+          node -e "
+            const fs = require('fs');
+            for (const f of fs.readdirSync('/tmp/gen-node')) {
+              const body = fs.readFileSync('/tmp/gen-node/' + f, 'utf8');
+              if (f.endsWith('.json')) JSON.parse(body);
+              if (body.includes('DUMMY-TOKEN')) { console.error('token leak in ' + f); process.exit(1); }
+            }
+            console.log('node client configs token-free');
+          "
+          test "$(node client/node/bin/phone-mcp.mjs configure --harness opencode \
+            --out /tmp/gen-node --url https://192.168.1.50:8080/mcp --token t \
+            --bridge node >/dev/null; grep -c phone-mcp-bridge.mjs /tmp/gen-node/opencode.phone-mcp.json)" = "1"
+
+      - name: Node client export-ca self-test (local TLS fixture)
+        run: |
+          openssl req -x509 -newkey rsa:2048 -keyout /tmp/nc.key -out /tmp/nc.crt -days 1 -nodes \
+            -subj "/CN=phone-mcp.local" -addext "subjectAltName=DNS:localhost,IP:127.0.0.1" 2>/dev/null
+          openssl s_server -accept 18446 -cert /tmp/nc.crt -key /tmp/nc.key -www >/dev/null 2>&1 &
+          SRV=$!; sleep 1
+          FP=$(openssl x509 -in /tmp/nc.crt -noout -fingerprint -sha256 | sed 's/.*=//')
+          node client/node/bin/phone-mcp.mjs export-ca --host 127.0.0.1 --port 18446 \
+            --sha256 "$FP" --out /tmp/node-ca.pem
+          test -s /tmp/node-ca.pem
+          openssl verify -CAfile /tmp/node-ca.pem /tmp/nc.crt
+          WRONG="00$(echo "$FP" | cut -c4-)"  # valid length, wrong value → real mismatch path
+          if node client/node/bin/phone-mcp.mjs export-ca --host 127.0.0.1 --port 18446 \
+               --sha256 "$WRONG" --out /tmp/node-bad.pem; then echo "mismatch must fail"; exit 1; fi
+          test ! -e /tmp/node-bad.pem
+          kill $SRV
+
+      - name: Node client pack check (npm readiness, zero deps)
+        run: |
+          node -e "
+            const p = require('./client/node/package.json');
+            if (Object.keys(p.dependencies || {}).length) throw new Error('client must stay dependency-free');
+            if (!p.bin || !p.bin['phone-mcp']) throw new Error('phone-mcp bin missing');
+            console.log('package.json OK', p.name + '@' + p.version);
+          "
+          cd client/node && npm pack --dry-run 2>&1 | tee /tmp/pack.log
+          grep -q "phone-mcp-client-0.1.0.tgz" /tmp/pack.log
+          grep -q "total files:" /tmp/pack.log
+
+      - name: ALPN regression guard (phone Netty drops ALPN-less handshakes)
+        run: |
+          openssl s_server -accept 18455 -cert /tmp/t.crt -key /tmp/t.key -www -alpn http/1.1 \
+            >/dev/null 2>&1 &
+          SRV=$!; sleep 1
+          python3 - <<'EOF'
+          import importlib.util, socket, ssl
+          spec = importlib.util.spec_from_file_location("b", "bridges/phone-mcp-bridge.py")
+          b = importlib.util.module_from_spec(spec); spec.loader.exec_module(b)
+          modes = [b._ssl_context("aa" * 32, False), b._ssl_context("", False, "/tmp/ca.pem"),
+                   b._ssl_context("", True)]
+          for ctx in modes:
+              with socket.create_connection(("127.0.0.1", 18455), timeout=5) as sock:
+                  with ctx.wrap_socket(sock, server_hostname="127.0.0.1") as tls:
+                      assert tls.selected_alpn_protocol() == "http/1.1", tls.selected_alpn_protocol()
+          print("python ALPN OK (pin/cafile/insecure)")
+          try:
+              with socket.create_connection(("127.0.0.1", 18455), timeout=5) as sock:
+                  b._ssl_context("", False).wrap_socket(sock, server_hostname="127.0.0.1")
+              raise SystemExit("default mode must verify")
+          except ssl.SSLCertVerificationError:
+              print("python default-mode verifies OK")
+          EOF
+          echo '{"jsonrpc":"2.0","id":1,"method":"ping","params":{}}' | \
+            PHONE_MCP_URL=https://127.0.0.1:18455/mcp PHONE_MCP_TOKEN=t PHONE_MCP_INSECURE=1 \
+            node bridges/phone-mcp-bridge.mjs 2>/dev/null | grep -q 'non-JSON' && echo "node ALPN OK"
+          kill $SRV
+
+      - name: export-ca self-test (local TLS fixture)
+        run: |
+          openssl req -x509 -newkey rsa:2048 -keyout /tmp/t.key -out /tmp/t.crt -days 1 -nodes \
+            -subj "/CN=phone-mcp.local" -addext "subjectAltName=DNS:localhost,IP:127.0.0.1" 2>/dev/null
+          openssl s_server -accept 18443 -cert /tmp/t.crt -key /tmp/t.key -www >/dev/null 2>&1 &
+          SRV=$!; sleep 1
+          FP=$(openssl x509 -in /tmp/t.crt -noout -fingerprint -sha256 | sed 's/.*=//')
+          ./scripts/export-ca.sh --host 127.0.0.1 --port 18443 --sha256 "$FP" --out /tmp/ca.pem
+          test -s /tmp/ca.pem
+          if ./scripts/export-ca.sh --host 127.0.0.1 --port 18443 \
+               --sha256 "00:11:22:33" --out /tmp/bad.pem; then echo "mismatch must fail"; exit 1; fi
+          kill $SRV
+
+      - name: Bridge round-trip over local TLS (pin + cafile)
+        run: |
+          python3 - > /tmp/mock-tls.py <<'EOF'
+          import json, ssl
+          from http.server import BaseHTTPRequestHandler, HTTPServer
+          class H(BaseHTTPRequestHandler):
+              def do_POST(self):
+                  n = int(self.headers.get('Content-Length', 0))
+                  body = json.loads(self.rfile.read(n) or b'{}')
+                  data = json.dumps({"jsonrpc":"2.0","id":body.get('id'),
+                                     "result":{"protocolVersion":"2025-06-18"}}).encode()
+                  self.send_response(200)
+                  self.send_header('Content-Type','application/json')
+                  self.send_header('Content-Length',str(len(data)))
+                  self.end_headers(); self.wfile.write(data)
+              def log_message(self, *a): pass
+          srv = HTTPServer(('127.0.0.1', 18444), H)
+          ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+          ctx.load_cert_chain('/tmp/t.crt', '/tmp/t.key')
+          srv.socket = ctx.wrap_socket(srv.socket, server_side=True)
+          srv.serve_forever()
+          EOF
+          python3 /tmp/mock-tls.py & SRV=$!; sleep 1
+          FP=$(openssl x509 -in /tmp/t.crt -noout -fingerprint -sha256 | sed 's/.*=//')
+          INIT='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"ci","version":"1"}}}'
+          echo "$INIT" | PHONE_MCP_URL=https://127.0.0.1:18444/mcp PHONE_MCP_TOKEN=t \
+            PHONE_MCP_CAFILE=/tmp/ca.pem node bridges/phone-mcp-bridge.mjs 2>/dev/null | grep -q '"protocolVersion":"2025-06-18"'
+          echo "$INIT" | PHONE_MCP_URL=https://127.0.0.1:18444/mcp PHONE_MCP_TOKEN=t \
+            PHONE_MCP_SHA256="$FP" python3 bridges/phone-mcp-bridge.py 2>/dev/null | grep -q protocolVersion
+          echo "$INIT" | PHONE_MCP_URL=https://127.0.0.1:18444/mcp PHONE_MCP_TOKEN=t \
+            PHONE_MCP_INSECURE=1 node bridges/phone-mcp-bridge.mjs 2>/dev/null | grep -q '"protocolVersion":"2025-06-18"'
+          echo "$INIT" | PHONE_MCP_URL=https://127.0.0.1:18444/mcp PHONE_MCP_TOKEN=t \
+            PHONE_MCP_INSECURE=1 python3 bridges/phone-mcp-bridge.py 2>/dev/null | grep -q protocolVersion
+          kill $SRV
+
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install compile SDK packages
+        run: |
+          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+          yes | sdkmanager --licenses > /dev/null
+
+      - name: Set up Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Unit tests + lint
+        run: gradle testDebugUnitTest lintDebug --stacktrace
+
+      - name: Upload test reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            app/build/reports/tests/
+            app/build/reports/lint-results-debug.html

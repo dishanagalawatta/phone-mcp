@@ -1,0 +1,4 @@
+<resources>
+    <!-- Dark platform theme for dialogs/system bars; Compose draws its own M3 dark scheme. -->
+    <style name="Theme.PhoneMcp" parent="android:Theme.Material.NoActionBar" />
+</resources>

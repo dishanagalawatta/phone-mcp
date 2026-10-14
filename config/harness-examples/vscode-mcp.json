@@ -1,0 +1,30 @@
+{
+  // .vscode/mcp.json — Phone MCP via stdio bridge (handles self-signed TOFU).
+  // Replace the URL with your dashboard LAN URL. Token stays in the
+  // environment — never bake it into this file.
+  "servers": {
+    "phone-mcp": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["${workspaceFolder}/bridges/phone-mcp-bridge.mjs"],
+      "env": {
+        "PHONE_MCP_URL": "https://192.168.1.50:8080/mcp",
+        "PHONE_MCP_TOKEN": "${input:phoneMcpToken}",
+        "PHONE_MCP_SHA256": "${input:phoneMcpSha256}"
+      }
+    }
+  },
+  "inputs": [
+    {
+      "id": "phoneMcpToken",
+      "type": "promptString",
+      "description": "Phone MCP bearer token (dashboard pairing card)",
+      "password": true
+    },
+    {
+      "id": "phoneMcpSha256",
+      "type": "promptString",
+      "description": "Phone MCP TLS SHA-256 fingerprint (dashboard, colons ok)"
+    }
+  ]
+}

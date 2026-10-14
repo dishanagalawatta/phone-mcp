@@ -1,0 +1,19 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "phone-mcp": {
+      "type": "local",
+      "command": [
+        "phone-mcp",
+        "serve"
+      ],
+      "enabled": true,
+      "environment": {
+        "PHONE_MCP_URL": "{env:PHONE_MCP_URL}",
+        "PHONE_MCP_TOKEN": "{env:PHONE_MCP_TOKEN}",
+        "PHONE_MCP_SHA256": "{env:PHONE_MCP_SHA256}"
+      },
+      "timeout": 60000
+    }
+  }
+}

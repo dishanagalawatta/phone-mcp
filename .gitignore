@@ -1,0 +1,41 @@
+# Android / Gradle
+.gradle/
+.kotlin/
+build/
+app/build/
+local.properties
+*.iml
+.idea/
+*.hprof
+
+# Signing / secrets (never commit keystore or tokens)
+*.jks
+*.keystore
+.env
+!.env.example
+
+# Python tooling (scripts/fuzz-mcp.py)
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+.pytest_cache/
+*.egg-info/
+generated-harness/
+phone-mcp-ca.pem
+
+# Node client (client/node — zero deps, but guard the standard paths)
+node_modules/
+*.tgz
+
+# Media / device proofs (regenerable via scripts/collect-proofs.sh + verify-mcp.sh)
+cacheDir/
+*.m4a
+*.mp4.bak
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.tmp
+*.log
+.vscode/

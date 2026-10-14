@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "phone-mcp-client"
+version = "0.1.0"
+description = "Unified MCP client for Phone MCP — stdio bridge + harness installer (opencode, claude, codex, vscode, cursor, gemini, cline, windsurf)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "TBD — add LICENSE before distribution (see repo README)" }
+keywords = ["mcp", "model-context-protocol", "android", "opencode", "claude", "codex"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Environment :: Console",
+  "Operating System :: OS Independent",
+  "Topic :: Scientific/Engineering :: Human Machine Interfaces",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = []  # stdlib only by design (ADR-0028) — keep empty
+
+[project.scripts]
+phone-mcp = "phone_mcp_client.cli:main"
+
+[project.urls]
+Homepage = "https://example.invalid/phone-mcp"
+Documentation = "https://example.invalid/phone-mcp/docs/client.md"
+# NOTE: replace example.invalid with the real repo URL before `twine upload`.
+# Publish (maintainer, needs a PyPI API token — never commit it):
+#   python3 -m build ./client && python3 -m twine upload client/dist/*
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
