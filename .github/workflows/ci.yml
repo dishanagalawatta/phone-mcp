@@ -40,10 +40,17 @@ jobs:
           tomllib.load(open('config/harness-examples/codex.toml', 'rb'))
           print('TOML OK codex.toml')
           for f in glob.glob('config/harness-examples/*.json') + ['config/harness-examples/codex.toml']:
-              redacted = open(f).read()
+              body = open(f).read()
+              # Strip full-line comments so prose (e.g. "# ... Bearer env ref") can't trip the guard.
+              code = re.sub(r'(?m)^\s*(#|//).*$', '', body)
               for token in ('PHONE_MCP_TOKEN', 'phoneMcpToken'):
-                  redacted = redacted.replace(token, '')
-              assert 'Bearer ' not in redacted or 'Bearer $' in open(f).read() or 'Bearer {' in open(f).read(), f
+                  code = code.replace(token, '')
+              # Flag only a real `Bearer <literal>` value; placeholders ($VAR, ${VAR},
+              # {env:VAR}, <...>, .../ellipsis) are the approved token-free pattern.
+              for m in re.finditer(r'Bearer\s+([^\s"\']+)', code):
+                  val = m.group(1).rstrip('",;')
+                  assert val.startswith(('$', '{', '<', '…', '.')), \
+                      f"baked-in token in {f}: {m.group(0)[:60]}"
           print('no baked-in tokens')
           EOF
 
@@ -221,14 +228,44 @@ jobs:
 
       - name: ALPN regression guard (phone Netty drops ALPN-less handshakes)
         run: |
-          openssl s_server -accept 18455 -cert /tmp/t.crt -key /tmp/t.key -www -alpn http/1.1 \
-            >/dev/null 2>&1 &
-          SRV=$!; sleep 1
+          # Self-contained fixture: this step runs before export-ca, so mint its
+          # own cert instead of relying on /tmp/t.crt + /tmp/ca.pem from later steps.
+          openssl req -x509 -newkey rsa:2048 -keyout /tmp/alpn.key -out /tmp/alpn.crt -days 1 -nodes \
+            -subj "/CN=phone-mcp.local" -addext "subjectAltName=DNS:localhost,IP:127.0.0.1" 2>/dev/null
+          # POST-capable TLS server (openssl s_server -www never answers POST,
+          # which hung the bridge until its 15s budget expired). It enforces ALPN
+          # like the phone's Netty engine: 400 JSON when http/1.1 was not
+          # negotiated, 200 text/plain otherwise — so the bridge's 'non-JSON'
+          # output below proves ALPN was negotiated, not just that TLS worked.
+          cat > /tmp/alpn-server.py <<'EOF'
+          import json, ssl
+          from http.server import BaseHTTPRequestHandler, HTTPServer
+          class H(BaseHTTPRequestHandler):
+              def do_POST(self):
+                  if self.connection.selected_alpn_protocol() != 'http/1.1':
+                      data = json.dumps({"error": "alpn-required"}).encode()
+                      self.send_response(400)
+                      self.send_header('Content-Type', 'application/json')
+                  else:
+                      data = b'alpn-ok-probe'
+                      self.send_response(200)
+                      self.send_header('Content-Type', 'text/plain')
+                  self.send_header('Content-Length', str(len(data)))
+                  self.end_headers(); self.wfile.write(data)
+              def log_message(self, *a): pass
+          srv = HTTPServer(('127.0.0.1', 18455), H)
+          ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+          ctx.load_cert_chain('/tmp/alpn.crt', '/tmp/alpn.key')
+          ctx.set_alpn_protocols(['http/1.1'])
+          srv.socket = ctx.wrap_socket(srv.socket, server_side=True)
+          srv.serve_forever()
+          EOF
+          python3 /tmp/alpn-server.py >/dev/null 2>&1 & SRV=$!; sleep 1
           python3 - <<'EOF'
           import importlib.util, socket, ssl
           spec = importlib.util.spec_from_file_location("b", "bridges/phone-mcp-bridge.py")
           b = importlib.util.module_from_spec(spec); spec.loader.exec_module(b)
-          modes = [b._ssl_context("aa" * 32, False), b._ssl_context("", False, "/tmp/ca.pem"),
+          modes = [b._ssl_context("aa" * 32, False), b._ssl_context("", False, "/tmp/alpn.crt"),
                    b._ssl_context("", True)]
           for ctx in modes:
               with socket.create_connection(("127.0.0.1", 18455), timeout=5) as sock:
@@ -262,7 +299,7 @@ jobs:
 
       - name: Bridge round-trip over local TLS (pin + cafile)
         run: |
-          python3 - > /tmp/mock-tls.py <<'EOF'
+          cat > /tmp/mock-tls.py <<'EOF'
           import json, ssl
           from http.server import BaseHTTPRequestHandler, HTTPServer
           class H(BaseHTTPRequestHandler):
@@ -307,7 +344,7 @@ jobs:
           java-version: "17"
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
 
       - name: Install compile SDK packages
         run: |

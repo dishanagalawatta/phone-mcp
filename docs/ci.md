@@ -25,6 +25,7 @@
 |------|-----|-------|
 | Gradle | 8.9 | `gradle-version` in `ci.yml` (AGP 8.6 needs 8.7+) |
 | JDK | Temurin 17 | `setup-java` in `ci.yml`, matches local JDK 17 |
+| Android SDK action | `android-actions/setup-android@v4` | `ci.yml` (v3 default-installed the retired `tools` package → `Failed to find package 'tools'`; v4 defaults to `platform-tools`) |
 | compileSdk | 35 | `app/build.gradle.kts` + `platforms;android-35` install step |
 
 ## Not covered (needs hardware)
