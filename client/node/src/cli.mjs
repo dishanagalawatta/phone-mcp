@@ -28,6 +28,7 @@ import {
   RENDERERS,
   bridgeCommand,
 } from './harnesses.mjs';
+import { stageSkills, projectSkillsDir } from './skills.mjs';
 import {
   actionableTransportError,
   fail,
@@ -50,11 +51,11 @@ const COMMANDS = ['serve', 'smoke', 'doctor', 'pair', 'configure', 'list', 'call
 const VALUE_FLAGS = new Set([
   'url', 'token', 'sha256', 'cafile', 'timeout-ms', 'timeout',
   'qr', 'out', 'harness', 'bridge', 'cwd', 'args', 'args-file',
-  'host', 'port',
+  'host', 'port', 'skills-dir',
 ]);
 const BOOL_FLAGS = new Set([
   'insecure', 'verbose', 'version', 'help',
-  'print-env', 'install', 'print-only', 'json',
+  'print-env', 'install', 'print-only', 'json', 'no-skills',
 ]);
 const ALIAS = { v: 'verbose', h: 'help' };
 
@@ -108,7 +109,7 @@ Commands:
   serve                 stdio bridge: harness (stdin/stdout) ↔ phone HTTPS
   smoke | doctor        4-probe health check (initialize/list/battery/device_info) [--timeout S]
   pair                  validate pairing values and save them (0600) [--qr JSON --out PATH --print-env]
-  configure             render/install harness configs [--harness all|… --bridge phone-mcp|node|python --out DIR --install --cwd DIR --print-only]
+  configure             render/install harness configs [--harness all|… --bridge phone-mcp|node|python --out DIR --install --cwd DIR --print-only --no-skills --skills-dir DIR]
   list                  list phone tools [--json]
   call <name>           call a phone tool [--args JSON --args-file PATH --json]
   media <id>            download a /media/{id} blob [--out PATH]
@@ -268,6 +269,28 @@ function cmdConfigure(flags, cfg) {
   console.log(`  export PHONE_MCP_SHA256="${cfg.sha256 || '<dashboard-fingerprint>'}"`);
   console.log('  phone-mcp smoke  # expect 4× PASS before touching any harness');
   console.log(`  # guide: docs/harness.md · manual probe: ${INSPECTOR_GUIDE}`);
+  if (!flags['no-skills']) {
+    const skillsDir = (flags['skills-dir'] ?? '').trim() || path.join(out, 'skills');
+    const secrets = [cfg.token, cfg.sha256].filter(Boolean);
+    let staged;
+    try {
+      staged = stageSkills(skillsDir, secrets);
+    } catch (err) {
+      return failMsg(`skills staging failed: ${err.message}`);
+    }
+    const total = Object.values(staged).reduce((a, b) => a + b, 0);
+    console.log(`skills staged → ${skillsDir} (${Object.keys(staged).length} skills, ${total} files; --no-skills to skip)`);
+    if (flags.install) {
+      const dest = projectSkillsDir(cwd);
+      try {
+        const installed = stageSkills(dest, secrets);
+        const n = Object.values(installed).reduce((a, b) => a + b, 0);
+        console.log(`  skills installed → ${dest} (${n} files; agents discover .agents/skills/ automatically)`);
+      } catch (err) {
+        return failMsg(`skills install failed: ${err.message}`);
+      }
+    }
+  }
   if (flags['print-only']) {
     console.log('== rendered ==');
     for (const id of wanted) {

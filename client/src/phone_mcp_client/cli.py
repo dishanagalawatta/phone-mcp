@@ -77,6 +77,10 @@ def _build_parser() -> argparse.ArgumentParser:
     cf.add_argument("--install", action="store_true", help="write into harness config paths")
     cf.add_argument("--print-only", action="store_true")
     cf.add_argument("--cwd", default=".", help="project root for project-scoped installs")
+    cf.add_argument("--no-skills", action="store_true",
+                    help="skip staging the 6 phone-mcp agent skills (staged by default)")
+    cf.add_argument("--skills-dir", default="",
+                    help="stage skills here (default: <out>/skills)")
     _add_conn_flags(cf)
 
     lp = sub.add_parser("list", help="list phone tools")
@@ -260,6 +264,26 @@ def cmd_configure(ns: argparse.Namespace, cfg: _config.ClientConfig) -> int:
     print(f"  export PHONE_MCP_SHA256=\"{cfg.sha256 or '<dashboard-fingerprint>'}\"")
     print(f"  phone-mcp smoke  # expect 4× PASS before touching any harness")
     print(f"  # guide: docs/harness.md · manual probe: {_h.INSPECTOR_GUIDE}")
+    if not ns.no_skills:
+        from . import skills as _skills
+        skills_dir = ns.skills_dir.strip() or os.path.join(ns.out, "skills")
+        try:
+            staged = _skills.stage_skills(
+                skills_dir, forbidden=tuple(s for s in (cfg.token, cfg.sha256) if s))
+        except (RuntimeError, ValueError) as exc:
+            return _fail(f"skills staging failed: {exc}")
+        total = sum(staged.values())
+        print(f"skills staged → {skills_dir} "
+              f"({len(staged)} skills, {total} files; --no-skills to skip)")
+        if ns.install:
+            try:
+                installed = _skills.stage_skills(
+                    _skills.project_skills_dir(ns.cwd),
+                    forbidden=tuple(s for s in (cfg.token, cfg.sha256) if s))
+            except (RuntimeError, ValueError) as exc:
+                return _fail(f"skills install failed: {exc}")
+            print(f"  skills installed → {_skills.project_skills_dir(ns.cwd)} "
+                  f"({sum(installed.values())} files; agents discover .agents/skills/ automatically)")
     if ns.print_only:
         print("== rendered ==")
         for hid in wanted:

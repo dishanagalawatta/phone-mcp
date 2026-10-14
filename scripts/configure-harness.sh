@@ -12,6 +12,9 @@
 # Flags: --from-qr JSON | --url U --token T --sha256 H [--bridge node|python]
 #        [--harness all|opencode|claude|codex|vscode|cursor|gemini|cline|windsurf|generic]
 #        [--out DIR (default ./generated-harness)] [--install] [--print-only] [--help]
+#        [--no-skills] [--skills-dir DIR (default OUT/skills)]: stage the 6
+#        phone-mcp agent skills next to the configs (and into ./.agents/skills
+#        on --install) so agents never miss them
 #        [--export-ca] [--ca-out PATH (default ./phone-mcp-ca.pem)]: chain
 #        export-ca.sh after rendering (needs --sha256: QR or explicit).
 set -euo pipefail
@@ -21,6 +24,8 @@ HARNESS=all
 OUT=./generated-harness
 INSTALL=0
 PRINT_ONLY=0
+NO_SKILLS=0
+SKILLS_DIR=""
 EXPORT_CA=0
 CA_OUT=./phone-mcp-ca.pem
 URL=""
@@ -43,6 +48,8 @@ while [ $# -gt 0 ]; do
     --out) OUT="$2"; shift 2 ;;
     --install) INSTALL=1; shift ;;
     --print-only) PRINT_ONLY=1; shift ;;
+    --no-skills) NO_SKILLS=1; shift ;;
+    --skills-dir) SKILLS_DIR="$2"; shift 2 ;;
     --export-ca) EXPORT_CA=1; shift ;;
     --ca-out) CA_OUT="$2"; shift 2 ;;
     -h|--help) usage 0 ;;
@@ -151,6 +158,37 @@ if want cline; then gen_json cline > "$OUT/cline.phone-mcp.json"; echo "wrote $O
 if want windsurf; then gen_json windsurf > "$OUT/windsurf.phone-mcp.json"; echo "wrote $OUT/windsurf.phone-mcp.json (mcp_config.json)"; fi
 if want gemini; then gen_json gemini > "$OUT/gemini.phone-mcp.json"; echo "wrote $OUT/gemini.phone-mcp.json (merge under mcpServers in ~/.gemini/settings.json)"; fi
 if want generic; then gen_json generic > "$OUT/generic.phone-mcp.json"; echo "wrote $OUT/generic.phone-mcp.json"; fi
+
+if [ "$NO_SKILLS" = 0 ]; then
+  SKILLS_DEST="${SKILLS_DIR:-$OUT/skills}"
+  if [ -d "$REPO/.agents/skills" ]; then
+    n=0
+    for s in "$REPO"/.agents/skills/phone-mcp*; do
+      [ -d "$s" ] || continue
+      rm -rf "$SKILLS_DEST/$(basename "$s")"
+      mkdir -p "$SKILLS_DEST"
+      cp -r "$s" "$SKILLS_DEST/"
+      n=$((n+1))
+    done
+    # Static markdown must never carry the live pairing token.
+    if [ "${#TOKEN}" -ge 8 ] && grep -rFq "$TOKEN" "$SKILLS_DEST"; then
+      echo "error: live token found in staged skills — refusing" >&2
+      exit 1
+    fi
+    echo "skills staged → $SKILLS_DEST ($n skills; --no-skills to skip)"
+    if [ "$INSTALL" = 1 ]; then
+      mkdir -p ./.agents/skills
+      for s in "$SKILLS_DEST"/phone-mcp*; do
+        [ -d "$s" ] || continue
+        rm -rf "./.agents/skills/$(basename "$s")"
+        cp -r "$s" ./.agents/skills/
+      done
+      echo "  skills installed → ./.agents/skills (agents discover .agents/skills/ automatically)"
+    fi
+  else
+    echo "warning: .agents/skills not found — skills not staged" >&2
+  fi
+fi
 
 if [ "$EXPORT_CA" = 1 ]; then
   if [ -z "$SHA" ]; then

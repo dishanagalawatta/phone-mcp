@@ -32,3 +32,4 @@
 | 0028 | Unified `phone-mcp` client (stdio bridge + harness installer) | Accepted | 2026-10-14 |
 | 0029 | Node twin of the unified client (zero-dep, same CLI; IP-literal SNI fix) | Accepted | 2026-10-14 |
 | 0030 | Agent skills for Phone MCP tool use | Accepted | 2026-10-14 |
+| 0031 | Ship agent skills with harness configuration | Accepted | 2026-10-15 |

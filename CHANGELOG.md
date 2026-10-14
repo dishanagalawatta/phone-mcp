@@ -4,6 +4,7 @@ All notable changes. Format: Keep a Changelog.
 
 ## [Unreleased]
 ### Added
+- Skills ship with harness configuration (ADR-0031): `phone-mcp configure` stages the 6 agent skills next to rendered configs (`<out>/skills/`, `--skills-dir` override, `--no-skills` opt-out) and syncs `<cwd>/.agents/skills/` on `--install`; byte-identical bundles in both twins (`phone_mcp_client/skills/`, `client/node/skills/`), live-secret refusal on stage, `configure-harness.sh` fallback stages the same way
 - Agent skills for Phone MCP (ADR-0030): 6 project skills in `.agents/skills/` — `phone-mcp` router (pairing, TOFU TLS, timeouts, media, error taxonomy) + `phone-mcp-sense` (5 tools), `phone-mcp-capture` (9), `phone-mcp-wireless` (8), `phone-mcp-ui` (6), `phone-mcp-net` (13) = 41/41 coverage; spec-only frontmatter, ≤430-word bodies, `references/` disclosure
 - `scripts/verify-skills.py` (132 checks: spec, budgets, layout, coverage, markdown-only supply-chain hygiene) + `scripts/eval-skills.py` (static 19/19 quality eval + 6-task live battery, transport-graceful SKIP, DOMAIN-ERROR guardrail reporting); both in README/AGENTS.md command tables
 - Skills live proof vs test device: smoke 4/4, battery 6/6 answered (`sensors_read`, `battery_read`, `vibrate`, `ble_scan` with real advertisers, `ui_dump` 46 nodes, `net_status` with live VPN flows) after owner enabled `ui_*`/`net_*` kill-switches

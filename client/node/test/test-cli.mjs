@@ -98,7 +98,7 @@ describe('configure', () => {
     assert.ok(files.some((f) => f.includes('opencode')));
     assert.ok(files.some((f) => f.includes('codex')));
     assert.ok(files.some((f) => f.includes('vscode')));
-    assert.equal(files.length, 9);
+    assert.equal(files.length, 10); // 9 harness configs + staged skills/
   });
 
   it('installs project-scoped targets', async () => {

@@ -6,6 +6,7 @@ progressive-disclosure layout, full 41-tool coverage, and supply-chain
 hygiene (markdown-only, no injection patterns, no remote-code execution,
 token/redaction discipline).
 """
+import os
 import re
 import sys
 from pathlib import Path
@@ -84,6 +85,31 @@ check(not missing, f"41-tool coverage (missing={missing})")
 check("kill-switch" in corpus or "kill-switch" in corpus, "kill-switch guardrails documented")
 check("ALPN" in corpus, "ALPN mandate documented")
 check("/media/" in corpus, "/media download path documented")
+
+# Distribution sync: the twins bundle byte-identical copies so `configure`
+# stages skills from an installed wheel anywhere. Source of truth stays
+# `.agents/skills/` — never edit the bundles by hand.
+
+
+def _tree_pairs(root):
+    pairs = {}
+    for dirpath, _dirnames, filenames in os.walk(root):
+        for name in filenames:
+            full = os.path.join(dirpath, name)
+            pairs[os.path.relpath(full, root)] = open(full, "rb").read()
+    return pairs
+
+
+for sid in SKILL_IDS:
+    want = _tree_pairs(os.path.join(SKILLS_DIR, sid))
+    for label, bundle in (
+        ("py", os.path.join("client", "src", "phone_mcp_client", "skills", sid)),
+        ("node", os.path.join("client", "node", "skills", sid)),
+    ):
+        got = _tree_pairs(bundle) if os.path.isdir(bundle) else {}
+        check(set(got) == set(want), f"{sid} {label} bundle file set matches source")
+        same = [rel for rel, data in want.items() if got.get(rel) == data]
+        check(len(same) == len(want), f"{sid} {label} bundle byte-identical ({len(same)}/{len(want)})")
 
 # Supply-chain hygiene (Snyk ToxicSkills, 2026: 36% of audited skills carry
 # prompt injection; 100% of confirmed-malicious skills pair it with code).

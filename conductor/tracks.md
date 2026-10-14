@@ -28,3 +28,4 @@
 | [x] | token_rotation_live | Owner-approved rotation via dashboard tap: old token 401-confirmed dead, new token transcribed (1→l correction via 32-combo probe), both smokes 4/4, stale bridge killed, harness reconnected, live calls re-proven, re-masked + purged | 2026-10-14 |
 | [x] | docs_sweep_post_setup | All guides aligned to live findings: hot-reload over restart, known-good snippet + timeout rationale, rotation/log-secret warnings, counts re-verified | 2026-10-14 |
 | [x] | phone_mcp_skills | Agent skills for Phone MCP (6 skills, 41/41, ADR-0030; verify 132/132, eval 19/19 + live 6/6 vs test device) | 2026-10-14 |
+| [x] | phone_mcp_skills_dist | Skills ship with harness config (bundles in both twins, configure stages/installs, ADR-0031) | 2026-10-15 |

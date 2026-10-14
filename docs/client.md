@@ -41,6 +41,15 @@ phone-mcp configure --harness codex --bridge python --install
 · `python` (stdlib twin, no Node). Tokens stay in env/prompt inputs — files
 carry `{env:…}` / `${…}` / `$…` / `${input:…}` refs only.
 
+`configure` also stages the 6 phone-mcp agent skills (`.agents/skills/`,
+41/41 tools) next to the rendered configs (`<out>/skills/`, override with
+`--skills-dir`, skip with `--no-skills`), so agents that pick up the configs
+never miss the playbooks. With `--install`, skills additionally sync into
+`<cwd>/.agents/skills/` — the agent-compatible discovery dir every major
+harness reads (project-scoped, or global when `--cwd ~`). Staged copies are
+static markdown: the live token/pin are never written into them (the stage
+aborts if either is found; ADR-0031).
+
 ## Harness matrix
 
 | Harness | `configure --harness` | Install target | Verify |

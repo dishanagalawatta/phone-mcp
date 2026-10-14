@@ -48,7 +48,7 @@ Co-Authored-By: Muse Spark 1.3 Free <noreply@example.com>
 - `domain/{ToolProvider,Gatekeeper,MediaStore}.kt` — contracts
 - `client/src/phone_mcp_client/` — unified harness-side client, Python twin (`phone-mcp` CLI; canonical TLS/harness logic, parity-tested vs `bridges/`)
 - `client/node/src/` — unified client, Node twin (zero-dep `phone-mcp` bin; same CLI; parity-tested vs bridge)
-- `.agents/skills/phone-mcp*/` — 6 agent skills (router + sense/capture/wireless/ui/net); keep in sync with `McpRouter`/`*Provider`; gate is `scripts/verify-skills.py`
+- `.agents/skills/phone-mcp*/` — 6 agent skills (router + sense/capture/wireless/ui/net); SOURCE OF TRUTH — after editing, re-copy each tree into `client/src/phone_mcp_client/skills/` + `client/node/skills/` (gate: `scripts/verify-skills.py` bundle-sync checks); `configure` stages/installs them, never hand-edit bundles
 - `opencode.json` — project harness wiring (flat `mcp.phone-mcp`, env refs only, timeout 60000; creds in 0600 paired store, never in file)
 - `data/*Provider.kt` — I/O impls
 - `service/McpServerService.kt` — Ktor FGS

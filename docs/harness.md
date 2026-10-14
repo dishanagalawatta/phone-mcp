@@ -119,6 +119,11 @@ Generate configs from the dashboard QR (`{"url","token","sha256"}` envelope):
   --export-ca --ca-out ./phone-mcp-ca.pem
 ```
 
+Both `phone-mcp configure` and `configure-harness.sh` stage the 6 agent
+skills next to the rendered configs (`skills/`, `--no-skills` to skip) and,
+on `--install`, sync them into `./.agents/skills/` — tools without the
+playbooks is a half-connected agent. Full behavior: `docs/client.md`.
+
 ## 3. Per-harness wiring
 
 Tokens stay in **env vars / prompt inputs** — never bake them into checked-in

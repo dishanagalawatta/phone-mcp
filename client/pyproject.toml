@@ -35,5 +35,8 @@ Documentation = "https://example.invalid/phone-mcp/docs/client.md"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+"phone_mcp_client.skills" = ["**/*.md"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -204,7 +204,7 @@ Local-only. Full reference: `docs/environments.md` + `.env.example`.
 | 🎨 Match the UI / brand | `DESIGN.md`, `docs/branding.md`, `assets/logo/`, `docs/assets/screenshots/` |
 | 🏛️ Understand decisions | `docs/adr/` (ADR-0001…0030) |
 | 🤖 Work as an agent in this repo | `AGENTS.md` |
-| 🧠 Teach an agent the 41 tools (6 skills, 41/41 coverage) | `.agents/skills/phone-mcp*/` (router + sense/capture/wireless/ui/net), `scripts/verify-skills.py`, `docs/adr/0030-agent-skills.md` |
+| 🧠 Teach an agent the 41 tools (6 skills, 41/41 coverage) | `.agents/skills/phone-mcp*/` (router + sense/capture/wireless/ui/net), `scripts/verify-skills.py`, `docs/adr/0030-agent-skills.md` — `phone-mcp configure` stages + installs them automatically (ADR-0031) |
 | 📱 Ship / test on devices | `docs/device-matrix.md`, `docs/ci.md`, `docs/play-release.md`, `docs/testing.md`, `docs/privacy-policy.md` |
 
 ## Testing & Verification
