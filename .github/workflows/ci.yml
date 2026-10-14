@@ -176,7 +176,7 @@ jobs:
           node --check client/node/src/protocol.mjs
           node --check client/node/src/harnesses.mjs
           node --check client/node/src/cli.mjs
-          node --test client/node/test/
+          node --test client/node/test/test-*.mjs
 
       - name: Node client configure dry-run (9 harnesses, token-free)
         run: |

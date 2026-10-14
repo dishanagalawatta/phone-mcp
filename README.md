@@ -162,7 +162,7 @@ phone-mcp configure --harness all --out ./generated-harness
 phone-mcp configure --harness opencode --install
 ```
 
-- No-Python hosts: `npm install -g ./client/node` (same CLI, 9 harnesses; tests: `node --test client/node/test/`).
+- No-Python hosts: `npm install -g ./client/node` (same CLI, 9 harnesses; tests: `node --test client/node/test/test-*.mjs`).
 - No-install fallback (same protocol, single file): `bridges/phone-mcp-bridge.mjs` (Node 18+) or `bridges/phone-mcp-bridge.py` (stdlib Python) + `./scripts/configure-harness.sh --from-qr '<qr-json>' --harness all` + `python3 scripts/phone-mcp-smoke.py …`.
 
 ## Architecture
@@ -218,7 +218,7 @@ Local-only. Full reference: `docs/environments.md` + `.env.example`.
 | Harness smoke | `phone-mcp smoke --timeout 20` |
 | Bridge unit tests | `python3 -m unittest discover -s bridges -p "test_*.py"` |
 | Client tests (Python) | `python3 -m unittest discover -s client/tests` |
-| Client tests (Node) | `node --test client/node/test/` |
+| Client tests (Node) | `node --test client/node/test/test-*.mjs` |
 | Agent skills gate (6 skills, 41/41) | `python3 scripts/verify-skills.py` |
 | Agent skills eval (static + live battery) | `python3 scripts/eval-skills.py` |
 

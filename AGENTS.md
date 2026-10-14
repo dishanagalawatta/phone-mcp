@@ -21,7 +21,7 @@ Co-Authored-By: Muse Spark 1.3 Free <noreply@example.com>
 | Export phone CA (verified direct mode) | `phone-mcp export-ca --host <ip> --port 8080 --sha256 <hex> --out ./phone-mcp-ca.pem` (or `./scripts/export-ca.sh …`) |
 | Bridge unit tests | `python3 -m unittest discover -s bridges -p "test_*.py"` |
 | Client unit + integration tests (Python) | `python3 -m unittest discover -s client/tests` (`pip install -e ./client` for the `phone-mcp` CLI) |
-| Client tests (Node twin) | `node --test client/node/test/` (`npm install -g ./client/node` for the `phone-mcp` CLI) |
+| Client tests (Node twin) | `node --test client/node/test/test-*.mjs` (`npm install -g ./client/node` for the `phone-mcp` CLI) |
 | Agent skills gate (6 skills, 41/41) | `python3 scripts/verify-skills.py` |
 | Agent skills eval (static + live battery) | `python3 scripts/eval-skills.py` |
 | BLE proof (needs `BLE_PEER` MAC on LAN) | `BLE_PEER=AA:BB:CC:DD:EE:FF ./scripts/verify-mcp.sh <ip>:8080` (+ auto-disconnect) |
