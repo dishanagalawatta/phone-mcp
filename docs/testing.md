@@ -17,8 +17,9 @@ and a device proof (`scripts/verify-mcp.sh` step or Inspector call per `docs/dev
   serves 41 tools + live VPN capture on-device.
 
 
-- **JVM: 185/185** (`testDebugUnitTest`), `lintDebug` 0 errors (incl. `BleGattTest`
-  CCCD/message vectors, `ConfirmTextTest` guard copy, `GatekeeperTest`, arg-parser suites).
+- **JVM: 226/226** (`testDebugUnitTest`), `lintDebug` 0 errors (incl. `BleGattTest`
+  CCCD/message vectors, `ConfirmTextTest` guard copy, `GatekeeperTest`, arg-parser suites,
+  plus the dynamic-capability suites below).
 - **Physical test device (API 34, hardware): 17/18.** Only `nfcTap` red — it needs a human holding
   a tag during its 45 s window (proven green with a live tap: NXP UID + NDEF). Everything
   else green incl. UI tests, E2E, stream-with-location, rotation, keeper. Green: providers, TLS pin,
@@ -32,9 +33,9 @@ and a device proof (`scripts/verify-mcp.sh` step or Inspector call per `docs/dev
 - **Physical test device E2E (`McpE2EDeviceTest`): 2/2 green** — full agent journey over loopback
   TLS incl. the `ble_subscribe` sweep (first 10 GATT chars, 2 s each) against the lab
   BLE peripheral at `11:22:33:44:55:66` (example placeholder — set `BLE_PEER` locally), SSE + PCM audio-stream decode, rotation kill,
-  and `ui_` gated pass (accessibility bound). `tools/list` asserts 41 tools (28 + 13 `net_*`).
+  and `ui_` gated pass (accessibility bound). `tools/list` asserts ≥28 tools (static surface is now 47: 28 + 13 `net_*` + 6 `capabilities_*`).
 - **Emulator (API 34 x86_64, `phone-mcp-emu` AVD): `verify-mcp.sh` fully green over
-  adb-forwarded TLS** (41 tools, audio range proof, both SSE streams, net probes;
+  adb-forwarded TLS** (47 tools, audio range proof, both SSE streams, net probes;
   `rooted:false`, NFC correctly unavailable), **plus live VPN capture**:
   DNS resolves through the tunnel, plain HTTP 200 relays with host attribution,
   system DNS-over-TLS (`8.8.8.8:853`) and QUIC (`8.8.8.8:443`, bidirectional
@@ -70,7 +71,7 @@ and a device proof (`scripts/verify-mcp.sh` step or Inspector call per `docs/dev
   token-free `configure` dry-runs, wheel + `npm pack` builds.
 - **Agent-skills gates (phone-free, run anywhere):** `scripts/verify-skills.py`
   132/132 (spec frontmatter, ≤500-word bodies, `references/` disclosure,
-  41/41 tool coverage, markdown-only supply-chain hygiene: no executables,
+  47/47 tool coverage, markdown-only supply-chain hygiene: no executables,
   no injection patterns, token/redaction discipline) + `scripts/eval-skills.py`
   static 19/19 (focus, completion criteria, single-source ownership).
 - **Agent-skills live battery (needs paired phone):** 6/6 answered vs test device —
@@ -117,6 +118,15 @@ and a device proof (`scripts/verify-mcp.sh` step or Inspector call per `docs/dev
 | `clipboard_get/set` | — (framework-only; round-trip is the test) | foreground app → set then get round-trips |
 | `battery_read` | `BatteryPayloadTest` (percent/charging/plugs/temp) | script §battery_read |
 | `device_info` | — (PackageManager/TlsStore need a device) | `tlsSha256` matches dashboard fingerprint |
+
+## Dynamic capabilities (third-party apps)
+
+| Tool / feature | Unit test | Device proof |
+|------|-----------|--------------|
+| `capabilities_list/register/unregister/approve/revoke/rescan` | `ExternalCapabilityRegistryTest` (ownership, limits, approval gate, signer pinning) + `ExternalRouterTest` (merge, `ext_` gate, counts) | live register → approve → gated call → revoke → unregister chain on test device |
+| `ext_<app>__<tool>` invocation | `ExternalRouterTest.externalCallRoutesWhenEnabled` (fake invoker) | `ExternalE2EDeviceTest` on-device: rescan → approve → real Binder invoke of `ext_demo__echo/add` in the sample app, unknown-tool `-32602`, consent cleanup |
+| `notifications/tools/list_changed` push | `ExternalEventsTest` (spec shape, emit on register/unregister, heartbeat silence) | `GET /mcp/events` held open across register/unregister → exactly 2 spec-exact frames; `verify-mcp.sh` asserts the same |
+| Restart persistence | `CapabilitySnapshotsTest` (round-trip, corrupt→empty, re-validation, fresh heartbeat) | force-stop → restart → record + approval + signer pin restored, then unregistered clean |
 
 ## Protocol / transport / safety
 

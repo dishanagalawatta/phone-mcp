@@ -5,7 +5,9 @@
 - [README.md]: quickstart + tool list
 - [AGENTS.md]: agent protocols + layer rules
 - [DESIGN.md]: Material 3 semantic design system
-- [docs/api.md]: 41-tool MCP reference
+- [docs/api.md]: 47-tool MCP reference (+ dynamic `ext_*`, `GET /mcp/events` push)
+- [docs/external-capabilities.md]: third-party capability integration guide (provider checklist, protocol, consent, testing)
+- [sample-provider/]: zero-dep reference provider app (`demo: echo/add/time`) + on-device `ExternalE2EDeviceTest`
 - [docs/client.md]: unified `phone-mcp` client guide (pair/smoke/configure, 9-harness matrix)
 - [docs/harness.md]: harness setup internals (bridge protocol, TLS modes, per-harness gotchas)
 - [config/harness-examples/]: per-harness configs (tokens via env only)
@@ -18,8 +20,8 @@
 - [scripts/phone-mcp-smoke.py]: harness-side 4-probe smoke test
 - [docs/harness.md]: + QS-tile headless server control, BLE agent notes, guard-dialog row
 - [docs/environments.md]: local env setup
-- [docs/adr/]: ADR-0001..0030
-- [.agents/skills/phone-mcp*/]: 6 agent skills (router + sense/capture/wireless/ui/net, 41/41 tools) + `scripts/verify-skills.py` gate + `scripts/eval-skills.py` eval
+- [docs/adr/]: ADR-0001..0035
+- [.agents/skills/phone-mcp*/]: 6 agent skills (router + sense/capture/wireless/ui/net, 47/47 tools) + `scripts/verify-skills.py` gate + `scripts/eval-skills.py` eval
 - [conductor/product.md]: product overview
 - [conductor/tech-stack.md]: pins (Kotlin 2.2, AGP 8.6, Ktor Netty 3.6.0, SDK 35/min 29)
 

@@ -42,7 +42,7 @@ phone-mcp configure --harness codex --bridge python --install
 carry `{env:…}` / `${…}` / `$…` / `${input:…}` refs only.
 
 `configure` also stages the 6 phone-mcp agent skills (`.agents/skills/`,
-41/41 tools) next to the rendered configs (`<out>/skills/`, override with
+47/47 tools) next to the rendered configs (`<out>/skills/`, override with
 `--skills-dir`, skip with `--no-skills`), so agents that pick up the configs
 never miss the playbooks. With `--install`, skills additionally sync into
 `<cwd>/.agents/skills/` — the agent-compatible discovery dir every major

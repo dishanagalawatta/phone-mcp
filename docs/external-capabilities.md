@@ -1,106 +1,162 @@
-# External App Capabilities — provider integration guide
+# External App Capabilities — integration guide
 
-Other Android apps on the same phone can publish tools to agents through
-Phone MCP — no Phone MCP rebuild needed. Published tools appear in
-`tools/list` as `ext_<capabilityId>__<tool>` once the user enables
-**External App Capabilities** on the dashboard (default OFF).
+Other Android apps on the same phone can publish tools to AI agents through
+Phone MCP — no Phone MCP rebuild needed. This guide is for **app developers**
+who want their app's functionality callable by agents. (If you are an **agent**
+wanting to *use* third-party tools, read `.agents/skills/phone-mcp/references/external-apps.md`
+instead — same concepts, agent framing.)
 
-Full decision record: `docs/adr/0032-dynamic-capabilities.md`.
+Decision records: ADR-0032 (module), ADR-0033 (push), ADR-0034 (consent),
+ADR-0035 (persistence). Normative wire reference: `docs/api.md`.
 
-## Concepts
+## How it fits together
 
-| Term | Meaning |
+```text
+Your app                          Phone MCP                        Agent
+──────────                        ─────────                        ─────
+PROVIDE service  ←──bind+invoke── ServiceToolInvoker
+   (describe+invoke                    │
+    over Messenger)                    ▼
+                              ExternalCapabilityRegistry
+                              (ext_<id>__<tool>, consent,
+                               heartbeat TTL, persistence)
+                                       │ ▲
+announce broadcast ──hint──────────┘ │ │ GET /mcp/events (push)
+directory provider ──register/hb─────┘ │ tools/list + tools/call
+                                       ▼
+                                  dashboard (switch + approvals)
+```
+
+- **Namespacing:** your tool `search` in capability `notes` becomes
+  `ext_notes__search` (capability id `[a-z0-9]{1,20}`, tool
+  `[a-z][a-z0-9_]{0,29}`, full name ≤64 chars).
+- **Trust:** invocation needs the dashboard External master switch ON
+  (default OFF) **and** per-capability approval (default deny). Your signing
+  cert SHA-256 is recorded; a re-registration with a changed key is rejected
+  until the old record is removed.
+- **Freshness:** records expire after 120 s without a heartbeat; approval
+  and pins persist across restarts in encrypted storage.
+
+## Quickstart (5 minutes, with the sample)
+
+`sample-provider/` is a complete zero-dependency example (`demo: echo, add,
+time`). Build, install next to Phone MCP, launch it (it announces on start):
+
+```bash
+./gradlew :sample-provider:assembleDebug
+adb install -r sample-provider/build/outputs/apk/debug/sample-provider-debug.apk
+adb shell am start -n com.phonemcp.sampleprovider/.MainActivity
+```
+
+Then, as any bearer-authenticated agent (replace `$TOKEN`):
+
+```bash
+BASE=https://<phone-lan-ip>:8080
+# 1. pull the authoritative descriptor from the sample app
+curl -sk -X POST $BASE/mcp -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -H 'MCP-Protocol-Version: 2025-06-18' -H "Authorization: Bearer $TOKEN" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"capabilities_rescan","arguments":{"packageName":"com.phonemcp.sampleprovider"}}}'
+# 2. approve it (or tap Approve on the dashboard card)
+curl -sk -X POST $BASE/mcp ... \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"capabilities_approve","arguments":{"capabilityId":"demo"}}}'
+# 3. call it (needs the dashboard External switch ON)
+curl -sk -X POST $BASE/mcp ... \
+  -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"ext_demo__echo","arguments":{"text":"hello"}}}'
+```
+
+## Integration checklist (your app)
+
+1. **Declare the service** (exported, with the exact action):
+   ```xml
+   <service android:name=".phonemcp.ProviderService" android:exported="true">
+       <intent-filter>
+           <action android:name="com.phonemcp.server.action.PROVIDE_CAPABILITY" />
+       </intent-filter>
+   </service>
+   ```
+2. **Answer two Messenger messages** (`MSG_DESCRIBE what:1`, `MSG_INVOKE
+   what:2`; reply `MSG_RESULT what:3` to `message.replyTo`):
+   - describe → extras `{ok:true, descriptorJson:"{…}"}` (schema below).
+   - invoke → extras `{tool, argsJson}` → `{ok:true, resultText:"…"}` or
+     `{ok:false, error:"…"}`. `resultText` becomes the MCP `text` content.
+     Keep handlers fast (20 s bind+execute bound) and side-effect-safe;
+     never leak other apps' data into results.
+3. **Announce on install/update/launch** (hint only — Phone MCP re-fetches
+   the descriptor from your service, never trusts extras):
+   ```kotlin
+   sendBroadcast(Intent("com.phonemcp.server.action.CAPABILITY_ANNOUNCED")
+       .setPackage("com.phonemcp.server")
+       .putExtra("com.phonemcp.server.extra.PACKAGE", packageName))
+   ```
+4. **Stay listed:** re-announce (or call the directory provider's
+   `heartbeat`) at least every 2 minutes while your tools should be visible.
+5. **Tell the phone owner** to enable the External switch and tap Approve —
+   without both, agents get explicit `isError` denials pointing at them.
+
+## Descriptor schema
+
+```json
+{
+  "capabilityId": "notes",
+  "displayName": "Notes",
+  "version": "1",
+  "tools": [
+    {
+      "name": "search",
+      "description": "Full-text search over notes",
+      "inputSchema": {
+        "type": "object",
+        "properties": { "q": { "type": "string", "description": "Query" } },
+        "required": ["q"]
+      }
+    }
+  ]
+}
+```
+
+Rules enforced on registration (violations are rejected with reasons, never
+stored): `capabilityId` `[a-z0-9]{1,20}`; 1–16 tools; tool names
+`[a-z][a-z0-9_]{0,29}`, unique, fitting the 64-char namespaced form;
+descriptions 1–2000 chars; `inputSchema` an object with `"type":"object"`,
+≤8192 bytes. One capability id has exactly one owning package; a different
+signing key must unregister first.
+
+## Alternative transports (no service)
+
+- **Directory provider** (`content://com.phonemcp.server.capabilities/…`):
+  `query()` lists capabilities/tools publicly; `call("register"|"unregister"|"heartbeat")`
+  mutates only your own Binder-verified package's record. Metadata-only —
+  invocation still needs the bound service.
+- **Agent-driven provisioning:** `capabilities_register` creates the record
+  for an installed provider app without any app-side code (invocation still
+  binds to that package's service).
+
+## Testing your integration
+
+1. `capabilities_rescan` with your package → `registered:1`.
+2. `capabilities_list` → your id, tools, `approved:false`, signer prefix.
+3. `capabilities_approve` → `approved:true` in the next list.
+4. Enable the External switch → `tools/call ext_<id>__<tool>` returns your
+   `resultText`; bad args return your `error` as `isError`.
+5. Force-stop Phone MCP, restart, re-list → record, approval, and pin are
+   restored (fresh heartbeat window).
+6. Hold `GET /mcp/events` open across a re-announce → one
+   `notifications/tools/list_changed` frame per change.
+
+## Troubleshooting
+
+| Symptom | Likely cause → fix |
 |---|---|
-| Capability | One provider app's named tool bundle (`capabilityId` `[a-z0-9]{1,20}`) |
-| Namespaced tool | `ext_<capabilityId>__<tool>` (≤64 chars, MCP tool-name charset) |
-| `capabilitiesVersion` | Monotonic counter in `serverInfo`/`GET /info`/`capabilities_list`; bumps on every list change |
+| `rescan` finds 0 | Service action misspelled / not exported / app not installed → compare with the sample manifest literally |
+| Registration rejected | Read the reason: bad id/tool name, oversize schema, duplicate names, or id owned by another package |
+| `signer changed` rejection | App re-signed → `capabilities_unregister` the old record, re-register |
+| `isError` kill-switch | Dashboard External switch OFF → owner enables it |
+| `isError` not approved | Consent missing → `capabilities_approve` or dashboard Approve |
+| Calls time out (>25 s) | Handler blocks (main thread, network, deadlock) → move work off, answer fast or fail with `error` |
+| Record vanishes after 2 min | No heartbeat → re-announce on a timer while serving |
+| `Unknown tool` (-32602) | Name doesn't match `ext_<id>__<tool>` or record expired → re-list first |
 
-Limits: 32 capabilities, 16 tools each, 120 s heartbeat TTL (re-announce or
-call `heartbeat` to stay listed), 25 s per-invocation bound. Records
-(including approval and signer pins) persist across restarts in encrypted
-storage; restored entries get a fresh heartbeat window.
-
-## Option A — bound service (recommended, invocation + registration)
-
-A complete working example lives in `sample-provider/` (zero-dependency
-`SampleProviderService` + one-screen announcer; install it and
-`capabilities_rescan` to see the full loop). It exposes `demo: echo, add,
-time` — the same app the on-device E2E (`ExternalE2EDeviceTest`) exercises.
-
-Expose a `Service` answering `com.phonemcp.server.action.PROVIDE_CAPABILITY`:
-
-```xml
-<service android:name=".phonemcp.ProviderService"
-    android:exported="true">
-    <intent-filter>
-        <action android:name="com.phonemcp.server.action.PROVIDE_CAPABILITY" />
-    </intent-filter>
-</service>
-```
-
-Answer two `Messenger` messages (`what` 1 = describe, 2 = invoke; reply
-`what` 3 with a `Bundle`):
-
-- describe → `{ok:true, descriptorJson:"{capabilityId, displayName, version,
-  tools:[{name, description, inputSchema}]}"}` (`inputSchema` must be
-  `{"type":"object", …}`).
-- invoke → extras `{tool, argsJson}` → `{ok:true, resultText:"…"}` or
-  `{ok:false, error:"…"}` (`resultText` becomes the MCP `text` content).
-
-Then nudge Phone MCP to fetch it:
-
-```kotlin
-context.sendBroadcast(
-    Intent("com.phonemcp.server.action.CAPABILITY_ANNOUNCED")
-        .setPackage("com.phonemcp.server")
-        .putExtra("com.phonemcp.server.extra.PACKAGE", context.packageName)
-)
-```
-
-## Option B — directory provider `call()` (register without a service)
-
-For metadata-only registration (invocation still needs Option A):
-
-```kotlin
-val uri = Uri.parse("content://com.phonemcp.server.capabilities/unused")
-val out = contentResolver.call(uri, "register", null, Bundle().apply {
-    putString("descriptorJson", descriptorJson)
-})
-// out.getBoolean("ok"), out.getString("resultText") == "ext_id__tool,…"
-```
-
-Identity is Binder-verified: you can only touch your own package's record.
-Keep the listing alive with `call(uri, "heartbeat", capabilityId, null)`
-at least every 2 minutes.
-
-## Option C — agent-driven (no Android code)
-
-Any bearer-authenticated agent can provision and inspect:
-
-```bash
-# list (note capabilitiesVersion)
-curl … -d '{"jsonrpc":"2.0","id":1,"method":"tools/call",
-  "params":{"name":"capabilities_list","arguments":{}}}'
-# rescan installed provider apps
-curl … -d '{"jsonrpc":"2.0","id":2,"method":"tools/call",
-  "params":{"name":"capabilities_rescan","arguments":{}}}'
-```
-
-## Calling a third-party tool
-
-Standard `tools/call` with the namespaced name. Invocation needs two
-consents: the dashboard External switch ON (else `isError` "disabled by
-kill-switch") AND per-capability approval — dashboard Approve button or
-`capabilities_approve` (else `isError` "not approved"). Signer pins are
-enforced: a re-registration with a changed signing key is rejected until
-the old record is unregistered.
-
-```bash
-curl … -d '{"jsonrpc":"2.0","id":3,"method":"tools/call",
-  "params":{"name":"ext_notes__search","arguments":{"q":"milk"}}}}'
-```
-
-Re-call `tools/list` when `capabilitiesVersion` changes; `initialize`
-advertises `capabilities.tools.listChanged: true` per MCP 2025-06-18.
-For live updates, hold `GET /mcp/events` (bearer auth, SSE) open — the
-server pushes `notifications/tools/list_changed` on every change.
+Limits recap: 32 capabilities device-wide, 16 tools each, 120 s heartbeat
+TTL, 25 s per-call bound, 8 KB schema cap. Records (including approval and
+signer pins) persist across restarts in encrypted storage.

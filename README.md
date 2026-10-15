@@ -196,7 +196,7 @@ Local-only. Full reference: `docs/environments.md` + `.env.example`.
 
 | I want to… | Start here |
 |---|---|
-| 📞 Call the API (41 tools, transports, SSE, errors) | `docs/api.md` |
+| 📞 Call the API (47 tools + dynamic `ext_*`, transports, SSE, errors) | `docs/api.md` |
 | 🔌 Connect my harness (pair/smoke/configure, 9-harness matrix) | `docs/client.md`, `docs/harness.md`, `config/harness-examples/` |
 | 💻 Use the client source (Python 79 tests + Node 71 tests) | `client/` + `client/node/` |
 | 🌉 Use the no-install bridge (Bearer + TOFU pin, parity-tested) | `bridges/phone-mcp-bridge.mjs`, `bridges/phone-mcp-bridge.py` |
