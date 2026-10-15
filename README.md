@@ -66,14 +66,15 @@ Details: [Getting Started](#getting-started) · `docs/client.md` · `docs/harnes
 | 🔊 **Act** — speak, buzz, flash, drive UI | `speaker_say`, `vibrate`, `torch`, `ui_screenshot/dump/click/swipe/type/key` | Immediate effect + status |
 | 📡 **Stream** — live sensor/GPS and audio batches over SSE | `sensors_stream`, `audio_stream` (one stream at a time each) | `text/event-stream` |
 | 🛜 **Inspect network** (opt-in VPN, metadata only — HTTPS never decrypted) | `net_status/connections/usage/capture_start/capture_stop/export_pcap/export_har/firewall_get/firewall_set/blocklist_check/geo_lookup/tls_info` + `net_stream` | JSON + pcap/HAR via `/media` |
+| 🔌 **External apps** (opt-in `ext_` toggle; local IPC registration) | `capabilities_list/register/unregister/rescan` + `ext_<app>__<tool>` | Proxied to the owning app (25 s bound) |
 
 Agents connect via `POST https://<phone-lan-ip>:8080/mcp` (JSON-RPC 2.0, Streamable HTTP, protocol `2025-06-18`, min `2025-03-26`).
 
 ## Key Features
 
 - **Secure by default** — bearer token (EncryptedSharedPreferences, QR pairing, one-tap rotation); TLS-only listener with fail-closed TOFU fingerprint; LAN-only bind + Origin check.
-- **Standard MCP endpoint** — `initialize`, `tools/list` (41 tools), `tools/call`, `ping`; tool failures return `isError:true`, protocol errors only `-32601/-32602/-32603` (+ `-32001` auth, `-32600` transport).
-- **Guardrailed** — kill-switches default OFF for `audio_*`, `camera_*`, `net_*`, `ui_*`, and `ble_write`; runtime permission explainers in the dashboard.
+- **Standard MCP endpoint** — `initialize`, `tools/list` (45 static tools + dynamic `ext_*`), `tools/call`, `ping`; tool failures return `isError:true`, protocol errors only `-32601/-32602/-32603` (+ `-32001` auth, `-32600` transport).
+- **Guardrailed** — kill-switches default OFF for `audio_*`, `camera_*`, `net_*`, `ui_*`, `ext_*` (third-party), and `ble_write`; runtime permission explainers in the dashboard.
 - **Modern dashboard** — Compose Material3 + Material You dynamic color, System/Light/Dark mode, server hero card, pairing QR, live tool-call log, QS-tile/widget pins. Secure window (`FLAG_SECURE`) so token/QR never leak into mirrors or recents.
 - **Clean layers** — pure-Kotlin `mcp/` (no `android.*`, JVM unit-testable) → `domain/` contracts → `data/` framework → `service/` Ktor foreground service → `presentation/` Compose UI.
 - **Harness-ready** — unified `phone-mcp` client (Python + zero-dep Node twins, parity-tested) and stdio bridge fallback for OpenCode, Claude Code/Desktop, Codex, VS Code, Cursor, Gemini CLI, Cline, and Windsurf.
@@ -204,7 +205,8 @@ Local-only. Full reference: `docs/environments.md` + `.env.example`.
 | 🎨 Match the UI / brand | `DESIGN.md`, `docs/branding.md`, `assets/logo/`, `docs/assets/screenshots/` |
 | 🏛️ Understand decisions | `docs/adr/` (ADR-0001…0030) |
 | 🤖 Work as an agent in this repo | `AGENTS.md` |
-| 🧠 Teach an agent the 41 tools (6 skills, 41/41 coverage) | `.agents/skills/phone-mcp*/` (router + sense/capture/wireless/ui/net), `scripts/verify-skills.py`, `docs/adr/0030-agent-skills.md` — `phone-mcp configure` stages + installs them automatically (ADR-0031) |
+| 🧠 Teach an agent the built-in tools (6 skills, 41/41 coverage) | `.agents/skills/phone-mcp*/` (router + sense/capture/wireless/ui/net), `scripts/verify-skills.py`, `docs/adr/0030-agent-skills.md` — `phone-mcp configure` stages + installs them automatically (ADR-0031) |
+| 🔌 Let other apps publish tools (dynamic capabilities) | `docs/external-capabilities.md`, `docs/adr/0032-dynamic-capabilities.md` — bound-service / directory-provider / announce-broadcast IPC + `capabilities_*` management tools |
 | 📱 Ship / test on devices | `docs/device-matrix.md`, `docs/ci.md`, `docs/play-release.md`, `docs/testing.md`, `docs/privacy-policy.md` |
 
 ## Testing & Verification

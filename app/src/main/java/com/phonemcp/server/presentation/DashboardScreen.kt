@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import com.phonemcp.server.presentation.components.ActivityConsoleCard
 import com.phonemcp.server.presentation.components.AgentPairingCard
 import com.phonemcp.server.presentation.components.AppearanceCard
+import com.phonemcp.server.presentation.components.ExternalCapabilitiesCard
 import com.phonemcp.server.presentation.components.NetworkTunnelCard
 import com.phonemcp.server.presentation.components.PhoneMcpTopBar
 import com.phonemcp.server.presentation.components.SecurityGuardrailsCard
@@ -72,6 +73,9 @@ fun DashboardScreen(
     onBleWriteToggle: (Boolean) -> Unit,
     onUiToggle: (Boolean) -> Unit,
     onNetToggle: (Boolean) -> Unit,
+    onExternalToggle: (Boolean) -> Unit = {},
+    onUnregisterExternal: (String) -> Unit = {},
+    onRescanExternal: () -> Unit = {},
     onStartVpn: () -> Unit,
     onStopVpn: () -> Unit,
     onThemeChange: (ThemeMode) -> Unit,
@@ -180,6 +184,18 @@ fun DashboardScreen(
                         onBleWriteToggle = onBleWriteToggle,
                         onUiToggle = onUiToggle,
                         onNetToggle = onNetToggle,
+                        externalEnabled = state.externalEnabled,
+                        onExternalToggle = onExternalToggle,
+                        externalCount = state.externalCapabilities.size,
+                    )
+                }
+
+                // Third-party capabilities directory
+                if (selectedCategory == DashboardCategory.ALL || selectedCategory == DashboardCategory.GUARDRAILS) {
+                    ExternalCapabilitiesCard(
+                        capabilities = state.externalCapabilities,
+                        onUnregister = onUnregisterExternal,
+                        onRescan = onRescanExternal,
                     )
                 }
 

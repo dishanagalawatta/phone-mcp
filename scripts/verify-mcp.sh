@@ -113,4 +113,8 @@ for line in open(sse_path):
 print('PCM chunk OK')
 EOF
 fi
+echo "== capabilities_list (dynamic registry; ext_* gated OFF by default) =="
+mcp_post '{"jsonrpc":"2.0","id":20,"method":"tools/call","params":{"name":"capabilities_list","arguments":{}}}'
+echo; echo "== tools/list carries capabilities_* management tools =="
+mcp_post '{"jsonrpc":"2.0","id":21,"method":"tools/list","params":{}}' | python3 -c "import json,sys; names=[t['name'] for t in json.load(sys.stdin)['result']['tools']]; print('capabilities_*:', sorted(n for n in names if n.startswith('capabilities_')))"
 echo "== verify complete =="

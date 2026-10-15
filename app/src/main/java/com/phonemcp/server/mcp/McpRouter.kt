@@ -26,6 +26,7 @@ import kotlinx.serialization.json.put
 class McpRouter @Inject constructor(
     private val providers: Set<@JvmSuppressWildcards ToolProvider>,
     private val gatekeeper: Gatekeeper,
+    private val externalRegistry: ExternalCapabilityRegistry = ExternalCapabilityRegistry(),
 ) {
     private val streamBusy = AtomicBoolean(false)
 
@@ -50,7 +51,10 @@ class McpRouter @Inject constructor(
     }
 
     fun listTools(): List<ToolDefinition> =
-        providers.flatMap { it.listTools() }
+        providers.flatMap { it.listTools() } + externalRegistry.listTools()
+
+    /** Monotonic counter: bumps on every external capability list change. */
+    fun externalVersion(): Long = externalRegistry.version.value
 
     fun isStreamable(name: String): Boolean =
         streamIndex.containsKey(name)
@@ -60,21 +64,32 @@ class McpRouter @Inject constructor(
             return ToolCallResult.error("Tool disabled by kill-switch: $name")
         }
         val provider = toolIndex[name]
-            // MCP spec: unknown tool in tools/call is a -32602 Invalid params error.
-            ?: return ToolCallResult.error("Unknown tool: $name", rpcCode = JsonRpcCodes.INVALID_PARAMS)
-        return try {
-            provider.call(name, args)
-        } catch (e: IllegalArgumentException) {
-            ToolCallResult.error("Invalid params for $name: ${e.message}", rpcCode = JsonRpcCodes.INVALID_PARAMS)
-        } catch (e: Exception) {
-            ToolCallResult.error("Internal error in $name: ${e.message}", rpcCode = JsonRpcCodes.INTERNAL_ERROR)
+        if (provider != null) {
+            return try {
+                provider.call(name, args)
+            } catch (e: IllegalArgumentException) {
+                ToolCallResult.error("Invalid params for $name: ${e.message}", rpcCode = JsonRpcCodes.INVALID_PARAMS)
+            } catch (e: Exception) {
+                ToolCallResult.error("Internal error in $name: ${e.message}", rpcCode = JsonRpcCodes.INTERNAL_ERROR)
+            }
         }
+        // Dynamic third-party tools (ext_<cap>__<tool>) resolve outside the
+        // static provider index, which is snapshotted at startup.
+        if (CapabilityIpcContract.parseNamespaced(name) != null) {
+            return externalRegistry.callTool(name, args)
+        }
+        // MCP spec: unknown tool in tools/call is a -32602 Invalid params error.
+        return ToolCallResult.error("Unknown tool: $name", rpcCode = JsonRpcCodes.INVALID_PARAMS)
     }
 
     fun serverInfo(): JsonObject = buildJsonObject {
         put("name", McpProtocol.SERVER_NAME)
         put("version", McpProtocol.SERVER_VERSION)
         put("protocolVersion", McpProtocol.LATEST_VERSION)
+        val extra = externalRegistry.serverInfoExtra()
+        put("externalTools", extra["externalTools"] ?: JsonPrimitive(0))
+        put("externalCapabilities", extra["externalCapabilities"] ?: JsonPrimitive(0))
+        put("capabilitiesVersion", extra["capabilitiesVersion"] ?: JsonPrimitive(0L))
     }
 
     /**
@@ -181,7 +196,12 @@ class McpRouter @Inject constructor(
                 put(
                     "capabilities",
                     buildJsonObject {
-                        put("tools", buildJsonObject { put("listChanged", false) })
+                        // True: third-party apps can register capabilities at
+                        // runtime, so clients SHOULD expect
+                        // `notifications/tools/list_changed` and re-call
+                        // tools/list (plus `capabilitiesVersion` deltas in
+                        // serverInfo) rather than caching the list.
+                        put("tools", buildJsonObject { put("listChanged", true) })
                     },
                 )
                 put(

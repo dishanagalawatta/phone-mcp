@@ -12,8 +12,10 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.phonemcp.server.BuildConfig
+import com.phonemcp.server.data.ExternalCapabilityDiscovery
 import com.phonemcp.server.domain.Gatekeeper
 import com.phonemcp.server.domain.LogBuffer
+import com.phonemcp.server.mcp.ExternalCapabilityRegistry
 import com.phonemcp.server.presentation.theme.ThemeMode
 import com.phonemcp.server.service.McpServerService
 import com.phonemcp.server.service.NetInspectVpnService
@@ -46,6 +48,10 @@ data class DashboardUiState(
     val uiEnabled: Boolean = false,
     val netEnabled: Boolean = false,
     val vpnRunning: Boolean = false,
+    /** Third-party proxied tools (`ext_*`) master switch. Default OFF (untrusted). */
+    val externalEnabled: Boolean = false,
+    /** Registered third-party capability ids (dashboard audit list). */
+    val externalCapabilities: List<String> = emptyList(),
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val accessibilityOn: Boolean = false,
     /** When true the window is hidden from mirrors/recents (scrcpy shows black). Default ON. */
@@ -68,6 +74,8 @@ class DashboardViewModel @Inject constructor(
     private val config: ServerConfig,
     private val tokens: TokenStore,
     private val tls: TlsStore,
+    private val externalRegistry: ExternalCapabilityRegistry,
+    private val externalDiscovery: ExternalCapabilityDiscovery,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
     private val tick = MutableStateFlow(0)
@@ -75,27 +83,33 @@ class DashboardViewModel @Inject constructor(
     private val fingerprintState = MutableStateFlow("")
     private val netState = MutableStateFlow(DashboardNetSnapshot())
 
-    val state = combine(tick, gatekeeper.disabled, logBuffer.lines, tokenState, fingerprintState) {
-        _, disabled, lines, token, fingerprint ->
-        val net = netState.value
-        DashboardUiState(
-            running = McpServerService.running,
-            urls = net.urls,
-            log = lines,
-            micEnabled = !disabled.contains(Gatekeeper.TOOLS_MIC),
-            cameraEnabled = !disabled.contains(Gatekeeper.TOOLS_CAMERA),
-            locationEnabled = !disabled.contains(Gatekeeper.TOOLS_LOCATION),
-            permissions = net.permissions,
-            token = token,
-            fingerprint = fingerprint,
-            bleWriteEnabled = !disabled.contains(Gatekeeper.TOOLS_BLEWRITE),
-            uiEnabled = !disabled.contains(Gatekeeper.TOOLS_UI),
-            netEnabled = !disabled.contains(Gatekeeper.TOOLS_NET),
-            vpnRunning = NetInspectVpnService.running,
-            themeMode = net.themeMode,
-            accessibilityOn = net.accessibilityOn,
-            secureScreen = net.secureScreen,
-        )
+    val state = combine(
+        combine(tick, gatekeeper.disabled, logBuffer.lines, tokenState, fingerprintState) {
+            _, disabled, lines, token, fingerprint ->
+            val net = netState.value
+            DashboardUiState(
+                running = McpServerService.running,
+                urls = net.urls,
+                log = lines,
+                micEnabled = !disabled.contains(Gatekeeper.TOOLS_MIC),
+                cameraEnabled = !disabled.contains(Gatekeeper.TOOLS_CAMERA),
+                locationEnabled = !disabled.contains(Gatekeeper.TOOLS_LOCATION),
+                permissions = net.permissions,
+                token = token,
+                fingerprint = fingerprint,
+                bleWriteEnabled = !disabled.contains(Gatekeeper.TOOLS_BLEWRITE),
+                uiEnabled = !disabled.contains(Gatekeeper.TOOLS_UI),
+                netEnabled = !disabled.contains(Gatekeeper.TOOLS_NET),
+                vpnRunning = NetInspectVpnService.running,
+                externalEnabled = !disabled.contains(Gatekeeper.TOOLS_EXT),
+                themeMode = net.themeMode,
+                accessibilityOn = net.accessibilityOn,
+                secureScreen = net.secureScreen,
+            )
+        },
+        externalRegistry.snapshot,
+    ) { ui, external ->
+        ui.copy(externalCapabilities = external.map { it.id }.sorted())
     }.stateIn(viewModelScope, SharingStarted.Eagerly, DashboardUiState())
 
     /** Re-reads running flag, addresses, permission states, and ensures pairing material exists. */
@@ -155,6 +169,26 @@ class DashboardViewModel @Inject constructor(
     fun setUiEnabled(enabled: Boolean) = gatekeeper.setEnabled(Gatekeeper.TOOLS_UI, enabled)
 
     fun setNetEnabled(enabled: Boolean) = gatekeeper.setEnabled(Gatekeeper.TOOLS_NET, enabled)
+
+    /** Master switch for third-party proxied tools (`ext_*`). Default OFF. */
+    fun setExternalEnabled(enabled: Boolean) = gatekeeper.setEnabled(Gatekeeper.TOOLS_EXT, enabled)
+
+    /** Removes a third-party capability (dashboard owner action, bearer-gated by the app itself). */
+    fun unregisterExternal(capabilityId: String) {
+        externalRegistry.unregister(capabilityId, forceLocal = true)
+        tick.value += 1
+    }
+
+    /** Re-queries installed provider apps; refreshes the capability list on completion. */
+    fun rescanExternal() {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                externalDiscovery.rescan()
+            } catch (_: Exception) {
+            }
+            tick.value += 1
+        }
+    }
 
     /** Persists the appearance choice; a tick re-read picks it up immediately. */
     fun setThemeMode(mode: ThemeMode) {

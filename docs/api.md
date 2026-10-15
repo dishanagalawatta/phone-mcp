@@ -4,7 +4,7 @@ Base: `https://<phone-lan-ip>:8080`. TLS-only (self-signed TOFU — verify SHA-2
 
 Auth: `Authorization: Bearer <token>` (dashboard pairing card, QR, rotation) on `/mcp`, `/media/*`, `/info`. `/healthz` open. Failure → HTTP 401 + JSON-RPC `-32001`.
 
-Generated from `mcp/McpRouter.kt` + `data/*Provider.kt` + `NetInspectCatalog.kt`. `tools/list` declares **41 tools** (28 + 13 `net_*`).
+Generated from `mcp/McpRouter.kt` + `data/*Provider.kt` + `NetInspectCatalog.kt`. `tools/list` declares **45 static tools** (28 + 13 `net_*` + 4 `capabilities_*`) plus dynamic `ext_<app>__<tool>` entries from registered third-party capabilities (see below). `initialize` advertises `capabilities.tools.listChanged: true`.
 
 ## Transports
 
@@ -12,8 +12,27 @@ Generated from `mcp/McpRouter.kt` + `data/*Provider.kt` + `NetInspectCatalog.kt`
 |----------|------|-------------|
 | `POST /mcp` | Bearer | JSON-RPC 2.0: `initialize`, `tools/list`, `tools/call`, `ping`. Requires `MCP-Protocol-Version: 2025-06-18` + `Accept: application/json, text/event-stream`. Origin-checked; bad version/origin → `-32600`. `GET /mcp` → 401 without token, else 405. |
 | `GET /media/{id}` | Bearer | Sidecar blob (`cacheDir/mcp/`, 15-min TTL, 100 MB cap). Range supported (`Range: bytes=0-99` → 206). |
-| `GET /info` | Bearer | Server/tool counts, TLS fingerprint. |
+| `GET /info` | Bearer | Server/tool counts, TLS fingerprint. Also `externalTools`, `externalCapabilities`, `capabilitiesVersion` (dynamic-capability deltas). |
 | `GET /healthz` | open | Liveness (service started?). |
+
+## External app capabilities (dynamic tools)
+
+Third-party on-device apps register tool bundles over local IPC (bound
+service, directory ContentProvider, announce broadcast — ADR-0032, full
+provider guide: `docs/external-capabilities.md`). Registered tools appear
+as `ext_<capabilityId>__<tool>` in `tools/list` and standard `tools/call`.
+
+| Tool | Args | Notes |
+|------|------|-------|
+| `capabilities_list` | — | Registry snapshot + `capabilitiesVersion` (poll for changes). |
+| `capabilities_register` | `capabilityId` + `packageName` (req), `displayName`, `version`, `tools[]` (req) | Provisions a record for an installed provider app. |
+| `capabilities_unregister` | `capabilityId` (req) | Removes a record. |
+| `capabilities_rescan` | `packageName` (opt) | Re-fetches authoritative descriptors from installed provider apps. |
+
+Invocation of `ext_*` tools is gated by the `ext_` kill-switch (dashboard
+**External App Capabilities**, default OFF); unenabled calls return
+`isError` naming the kill-switch. Unknown/malformed `ext_*` names return
+`-32602`; unreachable providers and timeouts (>25 s) return `isError`.
 
 ## Calling convention
 

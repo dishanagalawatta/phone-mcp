@@ -42,6 +42,9 @@ fun SecurityGuardrailsCard(
     onBleWriteToggle: (Boolean) -> Unit,
     onUiToggle: (Boolean) -> Unit,
     onNetToggle: (Boolean) -> Unit,
+    externalEnabled: Boolean = false,
+    onExternalToggle: (Boolean) -> Unit = {},
+    externalCount: Int = 0,
     modifier: Modifier = Modifier,
 ) {
     ElevatedCard(
@@ -156,6 +159,20 @@ fun SecurityGuardrailsCard(
                 tag = "toggle_net",
                 checked = netEnabled,
                 onChange = onNetToggle,
+            )
+
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                modifier = Modifier.padding(vertical = 4.dp),
+            )
+
+            GuardrailToggleRow(
+                title = "External App Capabilities",
+                codeLabel = "Third-party tools (ext_*)",
+                description = "Proxied tools from other apps ($externalCount registered) — untrusted until enabled",
+                tag = "toggle_external",
+                checked = externalEnabled,
+                onChange = onExternalToggle,
             )
         }
     }

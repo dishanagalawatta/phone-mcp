@@ -389,6 +389,9 @@ class McpServerService : Service() {
                 put("version", info["version"] ?: JsonPrimitive(McpProtocol.SERVER_VERSION))
                 put("protocolVersion", info["protocolVersion"] ?: JsonPrimitive(McpProtocol.LATEST_VERSION))
                 put("tools", router.listTools().size)
+                put("externalTools", info["externalTools"] ?: JsonPrimitive(0))
+                put("externalCapabilities", info["externalCapabilities"] ?: JsonPrimitive(0))
+                put("capabilitiesVersion", info["capabilitiesVersion"] ?: JsonPrimitive(0L))
             },
         )
     }

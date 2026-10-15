@@ -33,3 +33,4 @@
 | 0029 | Node twin of the unified client (zero-dep, same CLI; IP-literal SNI fix) | Accepted | 2026-10-14 |
 | 0030 | Agent skills for Phone MCP tool use | Accepted | 2026-10-14 |
 | 0031 | Ship agent skills with harness configuration | Accepted | 2026-10-15 |
+| 0032 | Dynamic third-party capabilities over local IPC | Accepted | 2026-10-15 |

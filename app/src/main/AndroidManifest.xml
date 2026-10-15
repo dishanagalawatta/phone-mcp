@@ -28,6 +28,19 @@
     <uses-feature android:name="android.hardware.sensor.barometer" android:required="false" />
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />
 
+    <!-- Marker permission identifying third-party capability providers (normal level). -->
+    <permission
+        android:name="com.phonemcp.server.permission.REGISTER_CAPABILITY"
+        android:protectionLevel="normal"
+        android:label="Phone MCP capability provider" />
+
+    <!-- Provider-service visibility on API 30+ (no QUERY_ALL_PACKAGES needed). -->
+    <queries>
+        <intent>
+            <action android:name="com.phonemcp.server.action.PROVIDE_CAPABILITY" />
+        </intent>
+    </queries>
+
     <application
         android:name=".PhoneMcpApp"
         android:allowBackup="false"
@@ -108,5 +121,26 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/phone_mcp_widget_info" />
         </receiver>
+
+        <!-- Rescan hint for third-party capability announcements. Extras are
+             untrusted by design (the receiver re-fetches the descriptor from
+             the named package's own service), so no permission is required. -->
+        <receiver
+            android:name=".service.CapabilityAnnounceReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.phonemcp.server.action.CAPABILITY_ANNOUNCED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Public on-device directory of registered capabilities. Mutations
+             are keyed by Binder-verified callingPackage (see provider). -->
+        <provider
+            android:name=".service.CapabilityDirectoryProvider"
+            android:authorities="com.phonemcp.server.capabilities"
+            android:enabled="true"
+            android:exported="true"
+            android:grantUriPermissions="false" />
     </application>
 </manifest>
