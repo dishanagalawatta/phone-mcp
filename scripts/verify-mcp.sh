@@ -117,4 +117,19 @@ echo "== capabilities_list (dynamic registry; ext_* gated OFF by default) =="
 mcp_post '{"jsonrpc":"2.0","id":20,"method":"tools/call","params":{"name":"capabilities_list","arguments":{}}}'
 echo; echo "== tools/list carries capabilities_* management tools =="
 mcp_post '{"jsonrpc":"2.0","id":21,"method":"tools/list","params":{}}' | python3 -c "import json,sys; names=[t['name'] for t in json.load(sys.stdin)['result']['tools']]; print('capabilities_*:', sorted(n for n in names if n.startswith('capabilities_')))"
+echo "== capabilities approve round-trip =="
+mcp_post '{"jsonrpc":"2.0","id":22,"method":"tools/call","params":{"name":"capabilities_register","arguments":{"capabilityId":"verify","packageName":"com.phonemcp.server","displayName":"verify probe","version":"1","tools":[{"name":"ping","description":"verify probe","inputSchema":{"type":"object"}}]}}}'
+mcp_post '{"jsonrpc":"2.0","id":23,"method":"tools/call","params":{"name":"capabilities_approve","arguments":{"capabilityId":"verify"}}}'
+mcp_post '{"jsonrpc":"2.0","id":24,"method":"tools/call","params":{"name":"capabilities_list","arguments":{}}}' | python3 -c "import json,sys; caps=json.loads(json.load(sys.stdin)['result']['content'][0]['text']); v=[c for c in caps['capabilities'] if c['capabilityId']=='verify']; assert v and v[0]['approved'], 'approve flag missing'; print('approved:true')"
+echo "== GET /mcp/events push (expect 2x list_changed) =="
+SSE_OUT="${TMPDIR:-/tmp}/phone-mcp-events.sse"
+curl -sk -N -m 25 "https://$BASE/mcp/events" "${AUTH[@]}" -H 'Accept: text/event-stream' > "$SSE_OUT" 2>/dev/null &
+EVTPID=$!
+sleep 3
+mcp_post '{"jsonrpc":"2.0","id":25,"method":"tools/call","params":{"name":"capabilities_revoke","arguments":{"capabilityId":"verify"}}}' > /dev/null
+mcp_post '{"jsonrpc":"2.0","id":26,"method":"tools/call","params":{"name":"capabilities_unregister","arguments":{"capabilityId":"verify"}}}' > /dev/null
+sleep 2
+kill $EVTPID 2>/dev/null || true
+wait $EVTPID 2>/dev/null || true
+echo "list_changed events: $(grep -c 'notifications/tools/list_changed' "$SSE_OUT" || true)"
 echo "== verify complete =="
