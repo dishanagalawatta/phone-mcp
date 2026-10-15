@@ -2,7 +2,7 @@
 """Conformance gate for phone-mcp agent skills.
 
 Checks Anthropic spec frontmatter (name/description), word budgets,
-progressive-disclosure layout, full 41-tool coverage, and supply-chain
+progressive-disclosure layout, full 47-tool coverage, and supply-chain
 hygiene (markdown-only, no injection patterns, no remote-code execution,
 token/redaction discipline).
 """
@@ -34,6 +34,8 @@ ALL_TOOLS = [
     "net_capture_start", "net_capture_stop", "net_export_pcap",
     "net_export_har", "net_firewall_get", "net_firewall_set",
     "net_blocklist_check", "net_geo_lookup", "net_tls_info", "net_stream",
+    "capabilities_list", "capabilities_register", "capabilities_unregister",
+    "capabilities_approve", "capabilities_revoke", "capabilities_rescan",
 ]
 ALLOWED_KEYS = {"name", "description", "license", "allowed-tools", "metadata"}
 
@@ -81,7 +83,7 @@ for sid in SKILL_IDS:
     for f in (d / "references").glob("*.md") if (d / "references").is_dir() else []:
         corpus += f.read_text()
 missing = [t for t in ALL_TOOLS if t not in corpus]
-check(not missing, f"41-tool coverage (missing={missing})")
+check(not missing, f"47-tool coverage (missing={missing})")
 check("kill-switch" in corpus or "kill-switch" in corpus, "kill-switch guardrails documented")
 check("ALPN" in corpus, "ALPN mandate documented")
 check("/media/" in corpus, "/media download path documented")

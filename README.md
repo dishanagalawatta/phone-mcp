@@ -205,7 +205,7 @@ Local-only. Full reference: `docs/environments.md` + `.env.example`.
 | 🎨 Match the UI / brand | `DESIGN.md`, `docs/branding.md`, `assets/logo/`, `docs/assets/screenshots/` |
 | 🏛️ Understand decisions | `docs/adr/` (ADR-0001…0030) |
 | 🤖 Work as an agent in this repo | `AGENTS.md` |
-| 🧠 Teach an agent the built-in tools (6 skills, 41/41 coverage) | `.agents/skills/phone-mcp*/` (router + sense/capture/wireless/ui/net), `scripts/verify-skills.py`, `docs/adr/0030-agent-skills.md` — `phone-mcp configure` stages + installs them automatically (ADR-0031) |
+| 🧠 Teach an agent the built-in tools (6 skills, 47/47 coverage) | `.agents/skills/phone-mcp*/` (router + sense/capture/wireless/ui/net), `scripts/verify-skills.py`, `docs/adr/0030-agent-skills.md` — `phone-mcp configure` stages + installs them automatically (ADR-0031) |
 | 🔌 Let other apps publish tools (dynamic capabilities) | `docs/external-capabilities.md`, `docs/adr/0032-dynamic-capabilities.md` — bound-service / directory-provider / announce-broadcast IPC + `capabilities_*` management tools |
 | 📱 Ship / test on devices | `docs/device-matrix.md`, `docs/ci.md`, `docs/play-release.md`, `docs/testing.md`, `docs/privacy-policy.md` |
 
@@ -221,7 +221,7 @@ Local-only. Full reference: `docs/environments.md` + `.env.example`.
 | Bridge unit tests | `python3 -m unittest discover -s bridges -p "test_*.py"` |
 | Client tests (Python) | `python3 -m unittest discover -s client/tests` |
 | Client tests (Node) | `node --test client/node/test/test-*.mjs` |
-| Agent skills gate (6 skills, 41/41) | `python3 scripts/verify-skills.py` |
+| Agent skills gate (6 skills, 47/47) | `python3 scripts/verify-skills.py` |
 | Agent skills eval (static + live battery) | `python3 scripts/eval-skills.py` |
 
 ## Troubleshooting

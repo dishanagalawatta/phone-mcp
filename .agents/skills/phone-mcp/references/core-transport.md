@@ -3,6 +3,7 @@
 ## Endpoints
 
 - `POST /mcp`: JSON-RPC 2.0 `initialize`, `tools/list`, `tools/call`, `ping`. Requires `MCP-Protocol-Version: 2025-06-18` and `Accept: application/json, text/event-stream`. Origin-checked.
+- `GET /mcp/events`: Bearer-required SSE push of `notifications/tools/list_changed` on every external-capability change (`:ping` keepalive every 25 s). Hold open; re-call `tools/list` on each event.
 - `GET /media/{id}`: Bearer-required sidecar blob (`cacheDir/mcp/`, 15-min TTL, 100 MB cap, `Range` supported).
 - `GET /info`: Bearer-required server and tool counts plus TLS fingerprint.
 - `GET /healthz`: open liveness probe.

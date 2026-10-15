@@ -142,4 +142,4 @@ configs, tokens via env only). Bridge twins: `bridges/phone-mcp-bridge.mjs`
 See `scripts/verify-mcp.sh` (init/list/vibrate/battery/sensors/audio-range/SSE/PCM-decode/net probes) and `scripts/fuzz-mcp.py` (12/12 malformed/type/concurrency/auth/media abuse).
 
 ## Agent usage
-Step-by-step playbooks per domain live in `.agents/skills/phone-mcp*/` (router `phone-mcp` + `sense`/`capture`/`wireless`/`ui`/`net`, 41/41 tools; ADR-0030). This page stays the normative tool/transport reference; the skills point here.
+Step-by-step playbooks per domain live in `.agents/skills/phone-mcp*/` (router `phone-mcp` + `sense`/`capture`/`wireless`/`ui`/`net`, 47/47 tools; ADR-0030). This page stays the normative tool/transport reference; the skills point here.

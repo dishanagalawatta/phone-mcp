@@ -12,6 +12,8 @@ Published tools appear in `tools/list` as `ext_<capabilityId>__<tool>`
 tools/call capabilities_list
 # re-query installed provider apps (also triggered by their announce broadcast)
 tools/call capabilities_rescan -- --packageName com.example.app
+# provision a record for an installed provider (agents and onboarding scripts)
+tools/call capabilities_register
 ```
 
 `capabilities_list` returns `capabilitiesVersion` plus, per capability,
