@@ -133,7 +133,7 @@ jobs:
         run: |
           rm -rf /tmp/gen && ./scripts/configure-harness.sh --url https://192.168.1.50:8080/mcp \
             --token T --sha256 AA:BB:CC:DD --harness all --out /tmp/gen >/dev/null
-          test "$(ls /tmp/gen | wc -l)" = "9"
+          test "$(ls /tmp/gen | grep -v '^skills$' | wc -l)" = "9"  # skills/ stages alongside the 9 configs
           python3 -c "import json; [json.load(open(f'/tmp/gen/{n}')) for n in ('opencode.phone-mcp.json','cline.phone-mcp.json','windsurf.phone-mcp.json')]"
 
       - name: Client unit + integration tests (no phone needed)
@@ -146,7 +146,7 @@ jobs:
           rm -rf /tmp/gen-client
           phone-mcp configure --harness all --out /tmp/gen-client \
             --url https://192.168.1.50:8080/mcp --token DUMMY-TOKEN >/dev/null
-          test "$(ls /tmp/gen-client | wc -l)" = "9"
+          test "$(ls /tmp/gen-client | grep -v '^skills$' | wc -l)" = "9"  # skills/ stages alongside the 9 configs
           python3 - <<'EOF'
           import glob, json, tomllib
           for f in sorted(glob.glob('/tmp/gen-client/*.json')):
@@ -156,6 +156,9 @@ jobs:
           assert '[mcp_servers.phone-mcp]' in toml
           print('TOML OK codex.phone-mcp.toml')
           for f in glob.glob('/tmp/gen-client/*'):
+              import os as _os
+              if not _os.path.isfile(f):
+                  continue  # skills/ stages alongside the configs
               body = open(f).read()
               assert 'DUMMY-TOKEN' not in body, f'token leak in {f}'
               stripped = body.replace('PHONE_MCP_TOKEN', '').replace('phoneMcpToken', '')
@@ -193,11 +196,13 @@ jobs:
           rm -rf /tmp/gen-node
           node client/node/bin/phone-mcp.mjs configure --harness all --out /tmp/gen-node \
             --url https://192.168.1.50:8080/mcp --token DUMMY-TOKEN >/dev/null
-          test "$(ls /tmp/gen-node | wc -l)" = "9"
+          test "$(ls /tmp/gen-node | grep -v '^skills$' | wc -l)" = "9"  # skills/ stages alongside the 9 configs
           node -e "
             const fs = require('fs');
             for (const f of fs.readdirSync('/tmp/gen-node')) {
-              const body = fs.readFileSync('/tmp/gen-node/' + f, 'utf8');
+              const p = '/tmp/gen-node/' + f;
+              if (!fs.statSync(p).isFile()) continue; // skills/ stages alongside
+              const body = fs.readFileSync(p, 'utf8');
               if (f.endsWith('.json')) JSON.parse(body);
               if (body.includes('DUMMY-TOKEN')) { console.error('token leak in ' + f); process.exit(1); }
             }
