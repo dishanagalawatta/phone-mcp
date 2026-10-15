@@ -19,9 +19,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -49,9 +53,9 @@ import com.phonemcp.server.service.Pairing.groupedFingerprint
 import com.phonemcp.server.service.Pairing.pairingPayload
 
 /**
- * Modern Agent Pairing & Security Credentials Card.
- * Manages Bearer token masking, clipboard copying, token rotation,
- * TLS SHA-256 verification, and high-fidelity QR scan pairing.
+ * Agent pairing card: connection targets, credentials, and QR pairing in one
+ * compact surface. Copy actions are inline icons (no button-row sprawl) and
+ * the QR builds only on demand behind the pairing button.
  */
 @Composable
 fun AgentPairingCard(
@@ -63,6 +67,7 @@ fun AgentPairingCard(
     modifier: Modifier = Modifier,
 ) {
     var revealed by rememberSaveable { mutableStateOf(false) }
+    var qrRevealed by rememberSaveable { mutableStateOf(false) }
 
     ElevatedCard(
         modifier = modifier.fillMaxWidth(),
@@ -78,27 +83,19 @@ fun AgentPairingCard(
                 .padding(20.dp),
         ) {
             // Header
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Column {
-                    Text(
-                        text = "Authentication & Security",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "Agent pairing (bearer token + TLS)",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.SemiBold,
-                        ),
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                }
-            }
+            Text(
+                text = "Authentication & Security",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = "Agent pairing (bearer token + TLS)",
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.SemiBold,
+                ),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
 
             Spacer(modifier = Modifier.height(14.dp))
 
@@ -118,145 +115,97 @@ fun AgentPairingCard(
                 return@Column
             }
 
-            // Connection Target
+            // ---- Connection targets (LAN + USB in one surface) ----
             Surface(
                 shape = RoundedCornerShape(12.dp),
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
+                    CopyableRow(
+                        label = "Endpoint URL",
+                        value = endpointUrl,
+                        copyDescription = "Copy endpoint URL",
+                        onCopy = { onCopy("endpoint", endpointUrl) },
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    CopyableRow(
+                        label = "USB cable (no Wi-Fi needed)",
+                        value = remember(endpointUrl) { UsbTransport.forwardCommand(endpointUrl) },
+                        copyDescription = "Copy USB forward command",
+                        onCopy = {
+                            onCopy(
+                                "usb-command",
+                                UsbTransport.forwardCommand(endpointUrl),
+                            )
+                        },
+                    )
+                    CopyableRow(
+                        label = null,
+                        value = remember(endpointUrl) { UsbTransport.loopbackUrl(endpointUrl) },
+                        copyDescription = "Copy USB loopback URL",
+                        onCopy = {
+                            onCopy(
+                                "usb-url",
+                                UsbTransport.loopbackUrl(endpointUrl),
+                            )
+                        },
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "Endpoint URL",
-                        style = MaterialTheme.typography.labelSmall,
+                        text = "USB uses the same token + SHA-256 pin. Never adb reverse.",
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = endpointUrl,
-                        fontFamily = FontFamily.Monospace,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
+                }
+            }
 
-                    Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
+            // ---- Credentials (token + fingerprint in one surface) ----
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
                     Text(
                         text = "Bearer Authorization Token",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = if (revealed) token else "••••••••••••••••",
-                        fontFamily = FontFamily.Monospace,
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            fontWeight = FontWeight.Medium,
-                        ),
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-
-                    if (fingerprint.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(10.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         Text(
-                            text = "TLS Certificate Fingerprint",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = "SHA-256: ${groupedFingerprint(fingerprint)}",
+                            text = if (revealed) token else "••••••••••••••••",
                             fontFamily = FontFamily.Monospace,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontWeight = FontWeight.Medium,
+                            ),
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.weight(1f),
+                        )
+                        TextButton(onClick = { revealed = !revealed }) {
+                            Text(if (revealed) "Hide" else "Show")
+                        }
+                        IconButton(onClick = { onCopy("token", token) }) {
+                            Icon(
+                                imageVector = Icons.Default.ContentCopy,
+                                contentDescription = "Copy bearer token",
+                            )
+                        }
+                    }
+                    if (fingerprint.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        CopyableRow(
+                            label = "TLS Certificate Fingerprint (SHA-256)",
+                            value = groupedFingerprint(fingerprint),
+                            copyDescription = "Copy TLS fingerprint",
+                            onCopy = { onCopy("fingerprint", groupedFingerprint(fingerprint)) },
                         )
                     }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            // USB cable path (no Wi-Fi needed): host-side adb forward +
-            // loopback URL. Same token + SHA-256 pin as above (display-only).
-            val usbCommand = remember(endpointUrl) { UsbTransport.forwardCommand(endpointUrl) }
-            val usbUrl = remember(endpointUrl) { UsbTransport.loopbackUrl(endpointUrl) }
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Column(modifier = Modifier.padding(14.dp)) {
-                    Text(
-                        text = "USB cable (no Wi-Fi needed)",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = usbCommand,
-                        fontFamily = FontFamily.Monospace,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = usbUrl,
-                        fontFamily = FontFamily.Monospace,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = "Same token + SHA-256 pin as above. Add -s <serial> when several devices are attached (adb devices). Never adb reverse.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                TextButton(
-                    onClick = { onCopy("usb-command", usbCommand) },
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text("Copy USB cmd")
-                }
-                TextButton(
-                    onClick = { onCopy("usb-url", usbUrl) },
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text("Copy USB URL")
-                }
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            // Action Buttons
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                TextButton(
-                    onClick = { revealed = !revealed },
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text(if (revealed) "Hide" else "Show")
-                }
-                TextButton(
-                    onClick = { onCopy("endpoint", endpointUrl) },
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text("Copy URL")
-                }
-                TextButton(
-                    onClick = { onCopy("token", token) },
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text("Copy token")
                 }
             }
 
@@ -264,25 +213,37 @@ fun AgentPairingCard(
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Pairing QR Section in high-contrast clean container.
-            // O(n²) bitmap build runs on Dispatchers.Default so scroll stays at 60fps.
-            val qrContent = remember(endpointUrl, token, fingerprint) {
-                pairingPayload(endpointUrl, token, fingerprint)
-            }
-            var qrBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
-            LaunchedEffect(qrContent) {
-                qrBitmap = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
-                    pairingQrBitmap(qrContent, 384)
-                }
+            // ---- On-demand QR pairing (builds the bitmap only when asked) ----
+            OutlinedButton(
+                onClick = { qrRevealed = !qrRevealed },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+            ) {
+                Text(
+                    text = if (qrRevealed) "Hide pairing QR" else "Show pairing QR",
+                    fontSize = 12.sp,
+                )
             }
 
-            if (qrBitmap != null) {
-                val bitmap = qrBitmap
-                if (bitmap != null) {
+            AnimatedVisibility(
+                visible = qrRevealed,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut(),
+            ) {
+                val qrContent = remember(endpointUrl, token, fingerprint) {
+                    pairingPayload(endpointUrl, token, fingerprint)
+                }
+                var qrBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+                LaunchedEffect(qrContent) {
+                    qrBitmap = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                        pairingQrBitmap(qrContent, 384)
+                    }
+                }
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
+                    Spacer(modifier = Modifier.height(12.dp))
                     Text(
                         text = "Scan to Pair Agent",
                         style = MaterialTheme.typography.labelMedium,
@@ -298,21 +259,25 @@ fun AgentPairingCard(
                             .padding(12.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Image(
-                            bitmap = bitmap.asImageBitmap(),
-                            contentDescription = "Pairing QR (endpoint + token + fingerprint)",
-                            modifier = Modifier.size(176.dp),
-                        )
+                        val bitmap = qrBitmap
+                        if (bitmap != null) {
+                            Image(
+                                bitmap = bitmap.asImageBitmap(),
+                                contentDescription = "Pairing QR (endpoint + token + fingerprint)",
+                                modifier = Modifier.size(176.dp),
+                            )
+                        }
                     }
                     Spacer(modifier = Modifier.height(12.dp))
                 }
-                }
             }
 
+            Spacer(modifier = Modifier.height(10.dp))
             OutlinedButton(
                 onClick = {
                     onRotateToken()
                     revealed = false
+                    qrRevealed = false
                 },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
@@ -322,6 +287,48 @@ fun AgentPairingCard(
                     fontSize = 12.sp,
                 )
             }
+        }
+    }
+}
+
+/** Label + monospace value + trailing copy icon. Label omitted for continuations. */
+@Composable
+private fun CopyableRow(
+    label: String?,
+    value: String,
+    copyDescription: String,
+    onCopy: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (label != null) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+    }
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = value,
+            fontFamily = FontFamily.Monospace,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f),
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        IconButton(
+            onClick = onCopy,
+            modifier = Modifier.size(32.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Default.ContentCopy,
+                contentDescription = copyDescription,
+                modifier = Modifier.size(18.dp),
+            )
         }
     }
 }
