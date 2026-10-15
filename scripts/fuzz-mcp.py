@@ -245,6 +245,34 @@ def sse_stream(name, args, seconds):
     return n
 
 
+def sse_first_frame(name, args, seconds=10):
+    """First SSE data frame as parsed JSON (None when rejected or empty)."""
+    h = {"Content-Type": "application/json", "Accept": "text/event-stream",
+         "MCP-Protocol-Version": "2025-06-18", "Authorization": f"Bearer {TOKEN}"}
+    body = json.dumps({"jsonrpc": "2.0", "id": 9, "method": "tools/call",
+                       "params": {"name": name, "arguments": args}}).encode()
+    conn = http.client.HTTPSConnection(HOST, PORT, timeout=seconds + 15, context=ctx())
+    conn.request("POST", "/mcp", body=body, headers=h)
+    resp = conn.getresponse()
+    if resp.status != 200:
+        conn.close()
+        return None
+    start = time.time()
+    while time.time() - start < seconds:
+        chunk = resp.fp.readline()
+        if not chunk:
+            break
+        if chunk.startswith(b"data: "):
+            try:
+                obj = json.loads(chunk[6:])
+            except Exception:
+                obj = {}
+            conn.close()
+            return obj if isinstance(obj, dict) else {}
+    conn.close()
+    return None
+
+
 def t_concurrent_streams():
     # Streams stall when the device dozes; best-effort wake (no-op without adb).
     try:
@@ -391,8 +419,15 @@ def t_net_stream_smoke():
         n = -1  # non-200 counts as a clean rejection
     if enabled:
         assert n >= 1, f"net_stream smoke (enabled): {n} events"
+    elif n in (-1, 0):
+        pass  # clean rejection: non-200 or connection closed
     else:
-        assert n in (-1, 0), f"net_stream smoke (kill-switched): {n} events"
+        # Kill-switched streams are denied with a single well-formed -32602
+        # error envelope delivered as one SSE data frame — assert exactly that.
+        assert n == 1, f"net_stream smoke (kill-switched): {n} events"
+        frame = sse_first_frame("net_stream", {"intervalMs": 500, "durationMs": 2000})
+        assert frame is not None and frame.get("error", {}).get("code") == -32602, \
+            f"net_stream smoke (kill-switched): expected single -32602 frame, got {frame!r}"
     assert healthy() == 200, "server unhealthy after net_stream smoke"
 
 
