@@ -34,7 +34,7 @@ You need: an Android device (API 29+), a computer on the **same Wi-Fi**, and the
 
 ```bash
 # 1. Install + start (on phone)
-# Install release/phone-mcp-v0.2.0-debug.apk, open "Phone MCP", tap "⚡ Grant Full Agent Access"
+# Install release/phone-mcp-v0.3.0-debug.apk, open "Phone MCP", tap "⚡ Grant Full Agent Access"
 # (or grant Camera/Mic/Location/BLE/Notifications and toggles individually), tap Start. Note the IP:port shown.
 
 # 2. Verify (from your computer, same LAN)
@@ -114,7 +114,7 @@ cp .env.example .env   # never commit .env / local.properties / keystores
 ### 2. Run on device
 
 ```bash
-adb install -r release/phone-mcp-v0.2.0-debug.apk   # prebuilt + signed (44 MB, v0.2.0); or rebuild below
+adb install -r release/phone-mcp-v0.3.0-debug.apk   # prebuilt + signed (73 MB, v0.3.0); or rebuild below
 # Launch "Phone MCP", tap "⚡ Grant Full Agent Access" (or grant runtime perms
 # and toggles individually), tap Start. Note IP:port shown.
 ```

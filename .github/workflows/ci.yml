@@ -233,7 +233,7 @@ jobs:
             console.log('package.json OK', p.name + '@' + p.version);
           "
           cd client/node && npm pack --dry-run 2>&1 | tee /tmp/pack.log
-          grep -q "phone-mcp-client-0.1.0.tgz" /tmp/pack.log
+          grep -q "phone-mcp-client-0.2.0.tgz" /tmp/pack.log
           grep -q "total files:" /tmp/pack.log
 
       - name: ALPN regression guard (phone Netty drops ALPN-less handshakes)

@@ -1,6 +1,6 @@
 {
   "name": "phone-mcp-client",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Unified MCP client for Phone MCP — stdio bridge + harness installer (opencode, claude, codex, vscode, cursor, gemini, cline, windsurf)",
   "type": "module",
   "bin": {

@@ -33,9 +33,9 @@ Back up `~/keys/` offline. Play App Signing re-signs for distribution; this key 
 # artifact: app/build/outputs/bundle/release/app-release.aab
 ```
 
-Direct install (no Play link needed): `release/phone-mcp-v0.2.0-debug.apk`
-(prebuilt debug-signed APK, 44 MB, `versionCode 2` / `0.2.0`, SHA-256 in
-`release/phone-mcp-v0.2.0-debug.apk.sha256`) — `adb install -r` it, then run
+Direct install (no Play link needed): `release/phone-mcp-v0.3.0-debug.apk`
+(prebuilt debug-signed APK, 73 MB, `versionCode 3` / `0.3.0`, SHA-256 in
+`release/phone-mcp-v0.3.0-debug.apk.sha256`) — `adb install -r` it, then run
 `docs/device-matrix.md` §4–6. Rebuild with `./gradlew :app:assembleDebug`.
 
 Rules: bump `versionCode` +1 on **every** upload (Play rejects reuse); `versionName` follows

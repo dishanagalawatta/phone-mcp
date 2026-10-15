@@ -217,7 +217,7 @@ def smoke(cfg, urlopen: Callable | None = None) -> list[tuple[str, bool, str]]:
         "params": {
             "protocolVersion": cfg.protocol,
             "capabilities": {},
-            "clientInfo": {"name": "phone-mcp-client", "version": "0.1.0"},
+            "clientInfo": {"name": "phone-mcp-client", "version": "0.2.0"},
         },
     }
     resp, err = rpc(cfg, init, timeout_s, urlopen=urlopen)

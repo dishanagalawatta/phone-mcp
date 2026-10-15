@@ -3,6 +3,8 @@
 All notable changes. Format: Keep a Changelog.
 
 ## [Unreleased]
+
+## [0.3.0] - 2026-10-15
 ### Fixed
 - USB cable transport is host-side `adb forward` (ADR-0036): every doc/script/client saying `adb reverse tcp:8080 tcp:8080` was wrong — `reverse` collides with the phone's Ktor `:8080` listener (`cannot bind listener`), live-proven on-device (same TLS fingerprint + auth gate as LAN).
 ### Added

@@ -269,7 +269,7 @@ export async function smoke(cfg, deps = {}) {
     params: {
       protocolVersion: cfg.protocol,
       capabilities: {},
-      clientInfo: { name: 'phone-mcp-client', version: '0.1.0' },
+      clientInfo: { name: 'phone-mcp-client', version: '0.2.0' },
     },
   };
   const [resp, err] = await rpc(cfg, init, timeoutS, deps);
