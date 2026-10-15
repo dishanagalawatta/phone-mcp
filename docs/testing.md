@@ -67,11 +67,11 @@ and a device proof (`scripts/verify-mcp.sh` step or Inspector call per `docs/dev
   config schemas (strict JSON + VS Code JSONC + TOML, no baked-in tokens),
   TLS/timeout parity, `export-ca` self-test over local TLS fixtures, bridge
   round-trips, ALPN regression guard (phone Netty drops ALPN-less handshakes),
-  plus the unified clients: Python suite (79 tests) + Node suite (71 tests)
+  plus the unified clients: Python suite (129 tests) + Node suite (102 tests)
   incl. shared `vectors.json` parity, pinned-TLS round-trips, 9-harness
   token-free `configure` dry-runs, wheel + `npm pack` builds.
 - **Agent-skills gates (phone-free, run anywhere):** `scripts/verify-skills.py`
-  132/132 (spec frontmatter, ≤500-word bodies, `references/` disclosure,
+  156/156 (spec frontmatter, ≤500-word bodies, `references/` disclosure,
   47/47 tool coverage, markdown-only supply-chain hygiene: no executables,
   no injection patterns, token/redaction discipline) + `scripts/eval-skills.py`
   static 19/19 (focus, completion criteria, single-source ownership).

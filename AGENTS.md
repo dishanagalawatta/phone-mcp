@@ -19,10 +19,11 @@ Co-Authored-By: Muse Spark 1.3 Free <noreply@example.com>
 | Harness smoke (no harness needed) | `phone-mcp smoke --timeout 20` (or `python3 scripts/phone-mcp-smoke.py --url https://<ip>:8080/mcp --token <t> --sha256 <hex>`) |
 | Harness configs | `phone-mcp configure --harness all --out ./generated-harness` (or `./scripts/configure-harness.sh --from-qr '<qr-json>' --harness all`) |
 | Export phone CA (verified direct mode) | `phone-mcp export-ca --host <ip> --port 8080 --sha256 <hex> --out ./phone-mcp-ca.pem` (or `./scripts/export-ca.sh …`) |
+| USB cable transport (no LAN) | `./scripts/usb-mcp.sh setup [-s <serial>]` (or `phone-mcp usb`; `--usb` on smoke/configure/export-ca; never `adb reverse` — ADR-0036) |
 | Bridge unit tests | `python3 -m unittest discover -s bridges -p "test_*.py"` |
 | Client unit + integration tests (Python) | `python3 -m unittest discover -s client/tests` (`pip install -e ./client` for the `phone-mcp` CLI) |
 | Client tests (Node twin) | `node --test client/node/test/test-*.mjs` (`npm install -g ./client/node` for the `phone-mcp` CLI) |
-| Agent skills gate (6 skills, 41/41) | `python3 scripts/verify-skills.py` |
+| Agent skills gate (6 skills, 47/47) | `python3 scripts/verify-skills.py` |
 | Agent skills eval (static + live battery) | `python3 scripts/eval-skills.py` |
 | BLE proof (needs `BLE_PEER` MAC on LAN) | `BLE_PEER=AA:BB:CC:DD:EE:FF ./scripts/verify-mcp.sh <ip>:8080` (+ auto-disconnect) |
 | Headless server start/stop (needs QS tile added once) | `adb shell cmd statusbar click-tile com.phonemcp.server/.service.McpServerTile` |

@@ -11,16 +11,17 @@
 - [docs/client.md]: unified `phone-mcp` client guide (pair/smoke/configure, 9-harness matrix)
 - [docs/harness.md]: harness setup internals (bridge protocol, TLS modes, per-harness gotchas)
 - [config/harness-examples/]: per-harness configs (tokens via env only)
-- [client/src/phone_mcp_client/]: unified MCP client, Python twin (`phone-mcp` CLI: serve/smoke/pair/configure/list/call/media/export-ca; 79 tests; parity vs bridges)
-- [client/node/]: unified MCP client, Node twin (zero-dep, Node 18+; same CLI; 71 `node:test` tests; parity vs bridge)
+- [client/src/phone_mcp_client/]: unified MCP client, Python twin (`phone-mcp` CLI: serve/smoke/pair/configure/list/call/media/export-ca/usb; 129 tests; parity vs bridges)
+- [client/node/]: unified MCP client, Node twin (zero-dep, Node 18+; same CLI; 102 `node:test` tests; parity vs bridge)
 - [bridges/phone-mcp-bridge.mjs]: stdio↔HTTP bridge, Bearer + TOFU pin (Python twin alongside; no-install fallback)
-- [bridges/test_bridge.py]: 22 bridge unit tests (pin/headers/SSE/TLS modes/budgets)
-- [scripts/configure-harness.sh]: QR → harness configs (+ `--export-ca` chaining)
-- [scripts/export-ca.sh]: fail-closed leaf-cert pinning for direct mode
-- [scripts/phone-mcp-smoke.py]: harness-side 4-probe smoke test
+- [bridges/test_bridge.py]: 26 bridge unit tests (pin/headers/SSE/TLS modes/budgets)
+- [scripts/usb-mcp.sh]: USB-cable transport via host-side `adb forward` (never `reverse`, ADR-0036) + healthz/fingerprint check
+- [scripts/configure-harness.sh]: QR → harness configs (+ `--export-ca` chaining; `--usb` rewrites URL to loopback)
+- [scripts/export-ca.sh]: fail-closed leaf-cert pinning for direct mode (+ `--usb`)
+- [scripts/phone-mcp-smoke.py]: harness-side 4-probe smoke test (+ `--usb`)
 - [docs/harness.md]: + QS-tile headless server control, BLE agent notes, guard-dialog row
 - [docs/environments.md]: local env setup
-- [docs/adr/]: ADR-0001..0035
+- [docs/adr/]: ADR-0001..0038 (0036 USB `adb forward`, 0037 one-button access, 0038 secure-screen default OFF)
 - [.agents/skills/phone-mcp*/]: 6 agent skills (router + sense/capture/wireless/ui/net, 47/47 tools) + `scripts/verify-skills.py` gate + `scripts/eval-skills.py` eval
 - [conductor/product.md]: product overview
 - [conductor/tech-stack.md]: pins (Kotlin 2.2, AGP 8.6, Ktor Netty 3.6.0, SDK 35/min 29)
@@ -29,5 +30,5 @@
 - Layers: `mcp/` pure Kotlin → `domain/` contracts → `data/` framework → `service/` Ktor FGS → `presentation/` Compose. Violations fail review.
 - Tools: `ToolProvider` + Hilt `@IntoSet` + `ToolDefinition` + 5s/30s timeout; domain failures `isError:true`, protocol `-32601/-32602/-32603/-32001/-32600`.
 - Media: `cacheDir/mcp/` sidecar `{mediaUrl, mimeType, expiresAt}`, 15-min TTL / 100 MB, Range support.
-- Security: TLS-only, Bearer on `/mcp` `/media/*` `/info` (`/healthz` open), EncryptedSharedPreferences, LAN-only + Origin, kill-switches default OFF.
+- Security: TLS-only, Bearer on `/mcp` `/media/*` `/info` (`/healthz` open), EncryptedSharedPreferences, LAN-only + Origin, kill-switches default OFF; dashboard mirror-visible by default (Secure-screen opt-in `FLAG_SECURE`), pairing QR gated behind a press.
 - Verify: `./scripts/setup.sh`, `./gradlew testDebugUnitTest` + `lintDebug`, `TOKEN=... ./scripts/verify-mcp.sh <ip>:8080`, `python3 scripts/verify-skills.py`, `python3 scripts/eval-skills.py`.

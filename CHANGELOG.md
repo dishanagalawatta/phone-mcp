@@ -3,7 +3,14 @@
 All notable changes. Format: Keep a Changelog.
 
 ## [Unreleased]
+### Fixed
+- USB cable transport is host-side `adb forward` (ADR-0036): every doc/script/client saying `adb reverse tcp:8080 tcp:8080` was wrong — `reverse` collides with the phone's Ktor `:8080` listener (`cannot bind listener`), live-proven on-device (same TLS fingerprint + auth gate as LAN).
 ### Added
+- `scripts/usb-mcp.sh` (`setup|check|status|remove`, `--port/--serial/--timeout/--json`): idempotent forward setup + `/healthz` + fingerprint check with actionable multi-device/unauthorized/offline hints.
+- `phone-mcp usb` (`setup|status|remove|check`) + `--usb` flag for `smoke`/`configure`/`export-ca` in both twins, with single-device auto-pick (`pick_usb_device`/`pickUsbDevice`) and loopback-aware transport errors; `--usb` on `verify-mcp.sh`, `export-ca.sh`, `configure-harness.sh`, `phone-mcp-smoke.py`.
+- Secure-screen default OFF for mirror driving (ADR-0038): `FLAG_SECURE` set only when the stored toggle says so; Appearance switch + warning retained, stored ON choices honored.
+- Pairing-card cleanup: QR builds only on demand behind Show/Hide pairing QR, inline copy icons (`CopyableRow`), merged LAN+USB surface, fingerprint copy action.
+- QS-tile-missing hero hint: `tileAdded` grant signal persisted from the add-tile result callback so headless `click-tile` no-ops explain themselves.
 - One-Button Autonomous Agent Permission (ADR-0037): added `AgentAccessCard` providing single-tap full agent autonomy ("⚡ Grant Full Agent Access") that enables all 7 hardware kill-switches (`Gatekeeper.enableAll()`), approves external capabilities, triggers Android runtime permission requests for any missing grants, and offers a direct deep-link to Accessibility Settings when UI automation is unconfigured.
 - Immediate safe-mode lockdown button ("Revoke All (Safe Mode)") on `AgentAccessCard` that returns all hardware gates to restricted mode in one tap.
 - Batch quick-actions ("Enable all" / "Disable all") in `SecurityGuardrailsCard` for hardware kill-switch management.

@@ -198,7 +198,7 @@ Local-only. Full reference: `docs/environments.md` + `.env.example`.
 |---|---|
 | 📞 Call the API (47 tools + dynamic `ext_*`, transports, SSE, errors) | `docs/api.md` |
 | 🔌 Connect my harness (pair/smoke/configure, 9-harness matrix) | `docs/client.md`, `docs/harness.md`, `config/harness-examples/` |
-| 💻 Use the client source (Python 79 tests + Node 71 tests) | `client/` + `client/node/` |
+| 💻 Use the client source (Python 129 tests + Node 102 tests) | `client/` + `client/node/` |
 | 🌉 Use the no-install bridge (Bearer + TOFU pin, parity-tested) | `bridges/phone-mcp-bridge.mjs`, `bridges/phone-mcp-bridge.py` |
 | 🧪 Run conformance / fuzz / proofs | `scripts/verify-mcp.sh`, `scripts/fuzz-mcp.py` (12/12), `scripts/phone-mcp-smoke.py`, `scripts/collect-proofs.sh`, `scripts/configure-harness.sh`, `scripts/export-ca.sh` |
 | ⚙️ Set up local env + signing | `docs/environments.md`, `.env.example` |
