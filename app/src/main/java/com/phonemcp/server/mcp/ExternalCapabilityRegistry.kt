@@ -67,6 +67,12 @@ class ExternalCapabilityRegistry @Inject constructor(
     private val _version = MutableStateFlow(0L)
     val version: StateFlow<Long> = _version.asStateFlow()
 
+    /**
+     * Live subscriber count of [version]. Used by tests to gate on collector
+     * attachment, and by transports for diagnostics (who is holding a stream).
+     */
+    val versionSubscribers: StateFlow<Int> get() = _version.subscriptionCount
+
     private val _snapshot = MutableStateFlow<List<ExternalCapability>>(emptyList())
     val snapshot: StateFlow<List<ExternalCapability>> = _snapshot.asStateFlow()
 

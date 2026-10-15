@@ -46,7 +46,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -184,6 +188,7 @@ class McpServerService : Service() {
                     )
                 }
                 get("/media/{id}") { serveMedia(call) }
+                get("/mcp/events") { serveEvents(call) }
                 get("/healthz") {
                     call.respondText("{\"ok\":true}", ContentType.Application.Json)
                 }
@@ -480,6 +485,54 @@ class McpServerService : Service() {
         }
     }
 
+    /**
+     * Serves `GET /mcp/events` as `Content-Type: text/event-stream`: clients
+     * hold this open to receive `notifications/tools/list_changed` whenever
+     * the external capability registry changes (MCP 2025-06-18 §list-changed).
+     * Bearer-gated like every data endpoint; `:ping` comments every 25 s keep
+     * intermediaries from idling the connection out. Client disconnect ends
+     * the stream (no server-side state per subscriber).
+     */
+    private suspend fun serveEvents(call: ApplicationCall) {
+        if (!checkAuth(call, "GET /mcp/events")) return
+        call.response.header(HttpHeaders.CacheControl, "no-cache")
+        logEvent("GET /mcp/events → 200 sse")
+        try {
+            call.respondTextWriter(ContentType.Text.EventStream, HttpStatusCode.OK) {
+                val writeMutex = Mutex()
+                suspend fun send(frame: String) = writeMutex.withLock {
+                    write(frame)
+                    flush()
+                }
+                send(": connected\n\n")
+                val beats = CoroutineScope(currentCoroutineContext()).launch {
+                    while (true) {
+                        delay(EVENT_HEARTBEAT_MS)
+                        try {
+                            send(": ping\n\n")
+                        } catch (_: Exception) {
+                            break
+                        }
+                    }
+                }
+                try {
+                    router.externalChanges().collect { notification ->
+                        send(
+                            "data: " + Json.encodeToString(JsonObject.serializer(), notification) + "\n\n",
+                        )
+                    }
+                } finally {
+                    beats.cancel()
+                }
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // Client went away (or writer failed); not an app error.
+            logEvent("GET /mcp/events closed")
+        }
+    }
+
     override fun onDestroy() {
         logEvent("server stopped")
         // Snapshot + clear synchronously so a rapid re-Start never observes a
@@ -526,6 +579,9 @@ class McpServerService : Service() {
         const val NOTIFICATION_ID = 41
         const val ACTION_START = "com.phonemcp.server.START"
         const val ACTION_STOP = "com.phonemcp.server.STOP"
+
+        /** SSE comment cadence on GET /mcp/events (idle-connection keepalive). */
+        const val EVENT_HEARTBEAT_MS = 25_000L
         private const val TAG = "PhoneMcp"
         private val MEDIA_ID = Regex("[A-Za-z0-9-]+")
 

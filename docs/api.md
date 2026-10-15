@@ -11,6 +11,7 @@ Generated from `mcp/McpRouter.kt` + `data/*Provider.kt` + `NetInspectCatalog.kt`
 | Endpoint | Auth | Description |
 |----------|------|-------------|
 | `POST /mcp` | Bearer | JSON-RPC 2.0: `initialize`, `tools/list`, `tools/call`, `ping`. Requires `MCP-Protocol-Version: 2025-06-18` + `Accept: application/json, text/event-stream`. Origin-checked; bad version/origin → `-32600`. `GET /mcp` → 401 without token, else 405. |
+| `GET /mcp/events` | Bearer | SSE push: `notifications/tools/list_changed` on every external-capability change (`:ping` keepalive every 25 s). Hold open; re-call `tools/list` on each event. |
 | `GET /media/{id}` | Bearer | Sidecar blob (`cacheDir/mcp/`, 15-min TTL, 100 MB cap). Range supported (`Range: bytes=0-99` → 206). |
 | `GET /info` | Bearer | Server/tool counts, TLS fingerprint. Also `externalTools`, `externalCapabilities`, `capabilitiesVersion` (dynamic-capability deltas). |
 | `GET /healthz` | open | Liveness (service started?). |

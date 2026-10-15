@@ -6,7 +6,10 @@ import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -55,6 +58,20 @@ class McpRouter @Inject constructor(
 
     /** Monotonic counter: bumps on every external capability list change. */
     fun externalVersion(): Long = externalRegistry.version.value
+
+    /**
+     * Server-initiated `notifications/tools/list_changed` envelope, exactly
+     * per MCP 2025-06-18 (method only — clients re-call `tools/list`).
+     * Pure; JVM-testable.
+     */
+    fun externalChangeNotification(): JsonObject = buildJsonObject {
+        put("jsonrpc", "2.0")
+        put("method", "notifications/tools/list_changed")
+    }
+
+    /** Hot flow of change notifications for SSE subscribers (skips current version). */
+    fun externalChanges(): Flow<JsonObject> =
+        externalRegistry.version.drop(1).map { externalChangeNotification() }
 
     fun isStreamable(name: String): Boolean =
         streamIndex.containsKey(name)

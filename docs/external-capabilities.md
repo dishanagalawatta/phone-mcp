@@ -91,3 +91,5 @@ curl … -d '{"jsonrpc":"2.0","id":3,"method":"tools/call",
 
 Re-call `tools/list` when `capabilitiesVersion` changes; `initialize`
 advertises `capabilities.tools.listChanged: true` per MCP 2025-06-18.
+For live updates, hold `GET /mcp/events` (bearer auth, SSE) open — the
+server pushes `notifications/tools/list_changed` on every change.
