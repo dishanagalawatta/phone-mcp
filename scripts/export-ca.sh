@@ -8,11 +8,14 @@
 # Usage:
 #   ./scripts/export-ca.sh --host 192.168.1.50 --port 8080 \
 #     --sha256 '<dashboard-fingerprint>' [--out ./phone-mcp-ca.pem]
+#   ./scripts/export-ca.sh --usb --sha256 '<dashboard-fingerprint>'
+#     (USB cable via `adb forward`; HOST defaults to 127.0.0.1 — run
+#     scripts/usb-mcp.sh setup first so the mapping exists)
 #   # then: export PHONE_MCP_CAFILE="$PWD/phone-mcp-ca.pem"
 #   # direct harnesses: NODE_EXTRA_CA_CERTS / SSL_CERT_FILE (see docs/harness.md)
 set -euo pipefail
 
-HOST=""; PORT="8080"; SHA=""; OUT="./phone-mcp-ca.pem"
+HOST=""; PORT="8080"; SHA=""; OUT="./phone-mcp-ca.pem"; USB=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -20,10 +23,13 @@ while [ $# -gt 0 ]; do
     --port) PORT="$2"; shift 2 ;;
     --sha256) SHA="$2"; shift 2 ;;
     --out) OUT="$2"; shift 2 ;;
+    --usb) USB=1; shift ;;
     -h|--help) sed -n '2,11p' "$0"; exit 0 ;;
     *) echo "unknown flag $1" >&2; exit 1 ;;
   esac
 done
+
+if [ "$USB" = 1 ] && [ -z "$HOST" ]; then HOST="127.0.0.1"; fi
 
 if [ -z "$HOST" ] || [ -z "$SHA" ]; then
   echo "error: need --host <lan-ip> and --sha256 <dashboard-fingerprint>" >&2
@@ -44,7 +50,7 @@ trap 'rm -rf "$TMP"' EXIT
 
 echo "== fetching leaf cert from $HOST:$PORT =="
 if ! timeout 15 openssl s_client -connect "$HOST:$PORT" -showcerts </dev/null >"$TMP/chain.pem" 2>"$TMP/err.log"; then
-  echo "error: TLS handshake failed (server running? LAN reachable? try adb reverse)" >&2
+  echo "error: TLS handshake failed (server running? LAN reachable? try adb forward (scripts/usb-mcp.sh setup))" >&2
   tail -3 "$TMP/err.log" >&2 || true
   exit 1
 fi

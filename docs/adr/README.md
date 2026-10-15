@@ -37,3 +37,5 @@
 | 0033 | Server-push for capability list changes over SSE | Accepted | 2026-10-15 |
 | 0034 | Per-capability consent and signer pinning | Accepted | 2026-10-15 |
 | 0035 | Restart persistence for capability records | Accepted | 2026-10-15 |
+| 0036 | USB transport is host-side `adb forward`, not `adb reverse` | Accepted | 2026-10-15 |
+| 0037 | One-Button Full Agent Permission & UI Component Reorganization | Accepted | 2026-10-15 |

@@ -29,7 +29,7 @@ phone-mcp pair --url https://192.168.1.50:8080/mcp --token <t> --sha256 <hex>
 phone-mcp smoke                                  # expect 4× PASS
 ```
 
-USB fallback: `adb reverse tcp:8080 tcp:8080` → `--url https://127.0.0.1:8080/mcp`.
+USB fallback: `adb -s <serial> forward tcp:8080 tcp:8080` → `--url https://127.0.0.1:8080/mcp` (same token + pin; or `phone-mcp usb --serial <serial>` / `scripts/usb-mcp.sh`).
 
 ## Configure harnesses
 

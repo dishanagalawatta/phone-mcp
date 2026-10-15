@@ -9,8 +9,8 @@ Usage:
     python3 scripts/phone-mcp-smoke.py --url https://192.168.1.50:8080/mcp \\
         --token <from-dashboard> [--sha256 <hex>] [--insecure] [--timeout 35]
 
-    # USB fallback first: adb reverse tcp:8080 tcp:8080
-    # then --url https://127.0.0.1:8080/mcp
+    # USB fallback first: adb forward tcp:8080 tcp:8080
+    # then --url https://127.0.0.1:8080/mcp (or just pass --usb)
 """
 
 import argparse
@@ -27,6 +27,44 @@ PROTOCOL = "2025-06-18"
 
 def normalize_fp(value: str) -> str:
     return "".join(c for c in (value or "").lower() if c in "0123456789abcdef")
+
+
+_USB_HOSTS = ("127.0.0.1", "localhost", "::1")
+_USB_CONN_MARKERS = (
+    "refused", "timed out", "timeout", "reset by peer", "connection reset",
+    "closed", "unreachable", "failed to connect",
+)
+
+
+def _is_loopback_url(url: str) -> bool:
+    try:
+        host = (urllib.parse.urlparse(url or "").hostname or "").lower()
+    except Exception:
+        return False
+    return host in _USB_HOSTS
+
+
+def _usb_port(url: str) -> int:
+    try:
+        return urllib.parse.urlparse(url or "").port or 8080
+    except ValueError:
+        return 8080
+
+
+def _rewrite_url_to_loopback(url: str, port: int = 8080) -> str:
+    """Rewrite *url*'s host to 127.0.0.1, keeping scheme/port/path."""
+    try:
+        parts = urllib.parse.urlparse(url or "")
+    except Exception:
+        return f"https://127.0.0.1:{port}/mcp"
+    if not parts.hostname:
+        return f"https://127.0.0.1:{port}/mcp"
+    new_port = port or parts.port or 8080
+    scheme = parts.scheme if parts.scheme in ("https", "http") else "https"
+    path = parts.path or "/mcp"
+    return urllib.parse.urlunparse(
+        parts._replace(scheme=scheme, netloc=f"127.0.0.1:{new_port}", path=path)
+    )
 
 
 def rpc(url, body, token, protocol, timeout, ctx):
@@ -62,17 +100,35 @@ def rpc(url, body, token, protocol, timeout, ctx):
             detail = ""
         return None, f"HTTP {e.code} {detail}"
     except Exception as e:  # noqa: BLE001
-        return None, str(e)
+        msg = str(e)
+        if _is_loopback_url(url) and any(m in msg.lower() for m in _USB_CONN_MARKERS):
+            port = _usb_port(url)
+            msg += (f" — USB loopback unreachable (run: adb forward tcp:{port} "
+                    f"tcp:{port} (or scripts/usb-mcp.sh setup))")
+        return None, msg
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Phone MCP harness-side smoke test")
-    ap.add_argument("--url", required=True, help="e.g. https://192.168.1.50:8080/mcp")
+    ap.add_argument("--url", default="", help="e.g. https://192.168.1.50:8080/mcp")
+    ap.add_argument("--usb", action="store_true",
+                    help="use USB loopback (rewrite --url host to 127.0.0.1, "
+                         "or default to https://127.0.0.1:8080/mcp when --url is omitted)")
+    ap.add_argument("--port", type=int, default=8080,
+                    help="USB port for --usb default URL / forward hint (default: 8080)")
     ap.add_argument("--token", required=True, help="Bearer token from dashboard pairing card")
     ap.add_argument("--sha256", default="", help="Pinned TLS fingerprint (hex, colons ok)")
     ap.add_argument("--insecure", action="store_true", help="Skip TLS verify (trusted LAN only)")
     ap.add_argument("--timeout", type=float, default=20.0)
     args = ap.parse_args()
+
+    url = (args.url or "").strip()
+    if args.usb:
+        url = _rewrite_url_to_loopback(url, args.port) if url else f"https://127.0.0.1:{args.port}/mcp"
+    if not url:
+        ap.error("--url is required (or pass --usb for the USB loopback default)")
+        return 2
+    args.url = url
 
     pin = normalize_fp(args.sha256)
     ctx = ssl.create_default_context()
@@ -164,7 +220,8 @@ def main() -> int:
         print(f"[{'PASS' if ok else 'FAIL'}] {name}: {detail}")
         failed = failed or not ok
     if failed:
-        print("SMOKE FAIL — check URL/token/fingerprint, dashboard server state, and LAN/adb reverse.")
+        print("SMOKE FAIL — check URL/token/fingerprint, dashboard server state, "
+              "and LAN/adb forward (scripts/usb-mcp.sh setup).")
         return 1
     print("SMOKE PASS — harness configs in config/harness-examples/ will connect.")
     return 0

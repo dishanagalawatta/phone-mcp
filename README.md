@@ -95,7 +95,7 @@ Agents connect via `POST https://<phone-lan-ip>:8080/mcp` (JSON-RPC 2.0, Streama
 |---|---|
 | Machine | Android Studio (Giraffe+), JDK 17, Android SDK 35 |
 | Device | Android phone/emulator, API 29+ |
-| Network | Phone + agent host on the same Wi-Fi; `adb` for USB fallback (`adb reverse tcp:8080 tcp:8080`) |
+| Network | Phone + agent host on the same Wi-Fi; `adb` for USB fallback (`adb -s <serial> forward tcp:8080 tcp:8080` → `https://127.0.0.1:8080/mcp`) |
 
 Full local-env reference: `docs/environments.md` + `.env.example`.
 
@@ -233,7 +233,8 @@ Local-only. Full reference: `docs/environments.md` + `.env.example`.
 | Empty `tools/list` | Service not started or providers not bound — check dashboard log + `GET /healthz`. |
 | Camera/mic `SecurityException` | Grant runtime perm while app is foreground; keep FGS notification visible (API 34 while-in-use). |
 | Clipboard null on API 29+ | Read only works while app is focused; `clipboard_set` works headless. |
-| Port in use | Change `ServerConfig.port` + rebuild, or clear `adb reverse --remove-all`. |
+| Port in use | Change `ServerConfig.port` + rebuild, or clear `adb forward --remove-all`. |
+| USB `cannot bind listener: Address already in use` | Wrong direction (`adb reverse` collides with the phone's :8080 Ktor listener) → use `adb -s <serial> forward tcp:8080 tcp:8080`; one-shot helper: `scripts/usb-mcp.sh` (details: `docs/harness.md` §1, ADR-0036). |
 
 ## Contributing
 

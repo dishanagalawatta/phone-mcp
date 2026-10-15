@@ -24,8 +24,17 @@ jobs:
       - name: Syntax checks (node/python/bash)
         run: |
           node --check bridges/phone-mcp-bridge.mjs
-          python3 -m py_compile bridges/phone-mcp-bridge.py scripts/phone-mcp-smoke.py
-          bash -n scripts/configure-harness.sh scripts/export-ca.sh scripts/verify-mcp.sh
+          python3 -m py_compile bridges/phone-mcp-bridge.py scripts/phone-mcp-smoke.py client/src/phone_mcp_client/usb.py
+          bash -n scripts/configure-harness.sh scripts/export-ca.sh scripts/verify-mcp.sh scripts/usb-mcp.sh scripts/setup.sh
+
+      - name: USB transport checks (no phone needed)
+        run: |
+          ./scripts/usb-mcp.sh --help >/dev/null
+          ./scripts/configure-harness.sh --url https://192.168.1.50:8080/mcp \
+            --token T --sha256 AA:BB:CC:DD --harness opencode --usb --out /tmp/gen-usb >/dev/null
+          grep -q 'https://127.0.0.1:8080/mcp' /tmp/gen-usb/opencode.phone-mcp.json
+          grep -q -- '--usb' scripts/verify-mcp.sh
+          grep -q -- '--usb' scripts/export-ca.sh
 
       - name: Harness config schemas (no baked-in tokens)
         run: |
@@ -175,6 +184,7 @@ jobs:
           node --check client/node/src/tls.mjs
           node --check client/node/src/protocol.mjs
           node --check client/node/src/harnesses.mjs
+          node --check client/node/src/usb.mjs
           node --check client/node/src/cli.mjs
           node --test client/node/test/test-*.mjs
 

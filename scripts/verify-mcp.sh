@@ -4,8 +4,32 @@
 #   echo | openssl s_client -connect 192.168.1.50:8080 2>/dev/null | openssl x509 -fingerprint -sha256 -noout
 # Auth: export TOKEN from the dashboard pairing card (or PHONE_MCP_TOKEN).
 # Usage: TOKEN=<from-dashboard-qr> ./scripts/verify-mcp.sh 192.168.1.50:8080
+#        TOKEN=<t> ./scripts/verify-mcp.sh --usb [127.0.0.1:PORT]  (USB cable via
+#        `adb forward`; defaults BASE to 127.0.0.1:8080, checks the forward
+#        mapping, hints `scripts/usb-mcp.sh setup` when absent)
 set -euo pipefail
-BASE="${1:-192.168.1.50:8080}"
+USB=0
+ARGS=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --usb) USB=1; shift ;;
+    *) ARGS+=("$1"); shift ;;
+  esac
+done
+BASE="${ARGS[0]:-192.168.1.50:8080}"
+if [ "$USB" = 1 ] && [ "${ARGS[0]:-}" = "" ]; then BASE="127.0.0.1:8080"; fi
+if [ "$USB" = 1 ]; then
+  UPORT="${BASE##*:}"
+  if command -v adb >/dev/null 2>&1; then
+    if adb forward --list 2>/dev/null | grep -q "tcp:$UPORT"; then
+      echo "(--usb: adb forward mapping for tcp:$UPORT present)" >&2
+    else
+      echo "(--usb: no 'adb forward tcp:$UPORT tcp:$UPORT' mapping — run scripts/usb-mcp.sh setup)" >&2
+    fi
+  else
+    echo "(--usb: adb not found — install platform-tools; see scripts/usb-mcp.sh --help)" >&2
+  fi
+fi
 TOKEN="${PHONE_MCP_TOKEN:-${TOKEN:-}}"
 AUTH=()
 if [ -n "$TOKEN" ]; then AUTH=(-H "Authorization: Bearer $TOKEN"); else echo "(no TOKEN set — expect 401s on data endpoints)"; fi

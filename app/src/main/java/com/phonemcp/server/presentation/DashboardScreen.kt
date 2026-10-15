@@ -156,6 +156,7 @@ fun DashboardScreen(
                         onAddTile = onAddTile,
                         onAddWidget = onAddWidget,
                         onCopyEndpoint = { url -> onCopy("endpoint", url) },
+                        tileAdded = state.tileAdded,
                     )
                 }
 

@@ -18,6 +18,9 @@ Env: PHONE_MCP_URL (required), PHONE_MCP_TOKEN (required),
 Usage:
     PHONE_MCP_URL=https://192.168.1.50:8080/mcp PHONE_MCP_TOKEN=... \\
         python3 bridges/phone-mcp-bridge.py
+
+USB (same TLS fingerprint + auth as LAN — `adb reverse` is wrong here):
+    adb forward tcp:8080 tcp:8080  # then PHONE_MCP_URL=https://127.0.0.1:8080/mcp
 """
 
 import hashlib
@@ -94,6 +97,28 @@ def fail(req_id, code: int, message: str) -> None:
 def log(msg: str) -> None:
     sys.stderr.write(f"[phone-mcp-bridge] {msg}\n")
     sys.stderr.flush()
+
+
+def _is_loopback_url(url: str) -> bool:
+    """True when *url* targets loopback (USB `adb forward` endpoint)."""
+    try:
+        host = (urllib.parse.urlparse(url or "").hostname or "").lower()
+    except Exception:
+        return False
+    return host in ("127.0.0.1", "localhost", "::1")
+
+
+def _loopback_port(url: str) -> int:
+    try:
+        return urllib.parse.urlparse(url or "").port or 8080
+    except ValueError:
+        return 8080
+
+
+_CONN_HINT_MARKERS = (
+    "refused", "timed out", "timeout", "reset by peer", "connection reset",
+    "closed", "unreachable", "failed to connect",
+)
 
 
 def pin_matches(der: bytes, pin: str) -> bool:
@@ -205,11 +230,26 @@ def handle_line(line: str, cfg: dict) -> None:
     except Exception as e:  # network / TLS / timeout
         detail = str(e)
         lowered = detail.lower()
-        if "certificate" in lowered or "self-signed" in lowered or "verify failed" in lowered:
-            detail += (
-                " — verify the dashboard SHA-256 once, then set PHONE_MCP_SHA256 "
-                "(or PHONE_MCP_INSECURE=1 on trusted LAN)"
-            )
+        loopback = _is_loopback_url(cfg["url"])
+        port = _loopback_port(cfg["url"])
+        if "unauthorized" in lowered or "offline" in lowered:
+            detail += (" — phone is unauthorized/offline: run `adb devices`, "
+                       "accept the on-phone RSA authorization prompt, then retry")
+        elif "certificate" in lowered or "self-signed" in lowered or "verify failed" in lowered:
+            if loopback:
+                detail += (
+                    " — verify the dashboard SHA-256 once, then set PHONE_MCP_SHA256 "
+                    f"(USB loopback via `adb forward tcp:{port} tcp:{port}` uses the "
+                    "same TLS fingerprint + auth as LAN)"
+                )
+            else:
+                detail += (
+                    " — verify the dashboard SHA-256 once, then set PHONE_MCP_SHA256 "
+                    "(or PHONE_MCP_INSECURE=1 on trusted LAN)"
+                )
+        elif loopback and any(m in lowered for m in _CONN_HINT_MARKERS):
+            detail += (f" — USB loopback unreachable (run: adb forward tcp:{port} "
+                       f"tcp:{port} (or scripts/usb-mcp.sh setup))")
         elif "timed out" in lowered or "timeout" in lowered:
             detail += (
                 " — tool budget exceeded (raise PHONE_MCP_TIMEOUT_MS/FAST_MS/MARGIN_MS "

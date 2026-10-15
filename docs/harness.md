@@ -25,8 +25,50 @@ export PHONE_MCP_TOKEN="<paste-from-pairing-card>"
 export PHONE_MCP_SHA256="<dashboard-fingerprint>"
 ```
 
-USB fallback (no LAN): `adb reverse tcp:8080 tcp:8080`, then
-`PHONE_MCP_URL=https://127.0.0.1:8080/mcp`.
+### USB fallback (no LAN): `adb forward` (live-verified)
+
+Prerequisites: USB debugging ON (Developer options), an `adb`-visible device
+(`adb devices -l` shows `device`, not `unauthorized`/`offline`), and — on
+Windows — the OEM USB driver installed.
+
+Setup (host-side `forward`: the phone's Ktor listener already holds
+device:8080, so `adb reverse` fails with `cannot bind listener`):
+
+```bash
+adb -s <serial> forward tcp:8080 tcp:8080
+export PHONE_MCP_URL="https://127.0.0.1:8080/mcp"
+export PHONE_MCP_TOKEN="<paste-from-pairing-card>"
+export PHONE_MCP_SHA256="<dashboard-fingerprint>"
+```
+
+Multi-device: pass `-s <serial>` (from `adb devices -l`); with a single
+phone attached the serial is auto-picked by `scripts/usb-mcp.sh` and
+`phone-mcp usb`. List pins
+with `adb forward --list`, remove one with `adb forward --remove tcp:8080`
+or all with `adb forward --remove-all`.
+
+Verify over the cable (same checks as LAN):
+
+```bash
+curl -sk https://127.0.0.1:8080/healthz  # {"ok":true} when up (open probe)
+python3 scripts/phone-mcp-smoke.py --url "$PHONE_MCP_URL" \
+  --token "$PHONE_MCP_TOKEN" --sha256 "$PHONE_MCP_SHA256"
+# expect 4x PASS
+```
+
+TLS is unchanged over USB: same token + same SHA-256 pin (fingerprint is
+identical on LAN vs USB; pin/cafile modes skip the hostname check so
+`127.0.0.1` verifies). `/healthz` stays open; `/mcp`, `/media/*`, `/info`
+still need `Authorization: Bearer`. Headless QS-tile start/stop also works
+over `adb` (see below) with no LAN.
+
+| Symptom | Cause → fix |
+|---------|-------------|
+| `adb reverse tcp:8080 tcp:8080` → `cannot bind listener: Address already in use` | Wrong direction: the phone listens on :8080, so `reverse` collides with Ktor — use `adb -s <serial> forward tcp:8080 tcp:8080` (ADR-0036). |
+| `unauthorized` | Re-authorize the RSA prompt on the phone, then `adb devices -l` must show `device`. |
+| `offline` / empty list | Re-plug, try another cable/port, `adb kill-server && adb start-server`; Windows: install the OEM USB driver. |
+| host `:8080` already in use | Free it or forward another host port: `adb -s <serial> forward tcp:18080 tcp:8080` + `PHONE_MCP_URL=https://127.0.0.1:18080/mcp`. |
+| TLS verify fails on `127.0.0.1` | Pin the dashboard fingerprint (`PHONE_MCP_SHA256`) or `export-ca` PEM — stock verify rejects the TOFU cert on loopback exactly as on LAN. |
 
 Headless server control (no taps needed): once the QS tile is added (dashboard →
 **Add QS tile** → system confirm, one time), the server starts and stops remotely:
@@ -49,6 +91,11 @@ adb shell cmd statusbar click-tile com.phonemcp.server/.service.McpServerTile
 
 (Live-verified Oct 2026 after a force-stop left a stale `running` flag and
 background starts refused; foreground resume → `{"ok":true}`.)
+
+`click-tile` silently doing nothing means the tile was never added (check
+`adb shell settings get secure sysui_qs_tiles` for a
+`com.phonemcp.server` entry) — the dashboard hero now says so until the
+one-time **Add QS tile** grant lands.
 
 ## 2. Recommended path: stdio bridge (all harnesses)
 

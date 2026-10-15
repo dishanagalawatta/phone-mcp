@@ -16,6 +16,7 @@ import urllib.request
 from typing import Any, Callable
 
 from . import tls as _tls
+from . import usb as _usb
 
 MCP_PROTOCOL_VERSION = "2025-06-18"
 
@@ -146,7 +147,7 @@ def rpc(
     except RuntimeError as e:  # fingerprint mismatch (fail-closed, no fallback)
         return None, str(e)
     except Exception as e:  # noqa: BLE001 — network / TLS / timeout
-        detail = _actionable_transport_error(str(e))
+        detail = _actionable_transport_error(str(e), cfg.url)
         return None, detail
     if status in (401, 403):
         return None, "HTTP 401 Missing or invalid bearer token (check PHONE_MCP_TOKEN)"
@@ -169,7 +170,12 @@ def rpc(
         return None, f"Upstream returned HTTP {status} (non-JSON)"
 
 
-def _actionable_transport_error(detail: str) -> str:
+def _actionable_transport_error(detail: str, url: str = "") -> str:
+    try:
+        if url and _usb.is_loopback_url(url):
+            return _usb.actionable_usb_error(detail, url)
+    except Exception:  # noqa: BLE001 — loopback sniffing must never fail closed
+        pass
     lowered = detail.lower()
     if "fingerprint mismatch" in lowered:
         return detail
@@ -297,6 +303,8 @@ def fetch_media(cfg, media_id: str, timeout_s: float | None = None) -> tuple[byt
             return res.read(), res.headers.get("Content-Type", "application/octet-stream")
     except urllib.error.HTTPError as e:
         raise RuntimeError(f"media fetch HTTP {e.code}") from e
+    except Exception as e:  # noqa: BLE001 — network / TLS / timeout
+        raise RuntimeError(_actionable_transport_error(str(e), cfg.url)) from e
 
 
 # ---------------------------------------------------------------------------
@@ -330,7 +338,7 @@ def handle_stdio_line(line: str, cfg) -> None:
         fail(req_id, -32603, str(e))
         return
     except Exception as e:  # noqa: BLE001
-        fail(req_id, -32603, _actionable_transport_error(str(e)))
+        fail(req_id, -32603, _actionable_transport_error(str(e), getattr(cfg, "url", "")))
         return
     if status in (401, 403):
         fail(req_id, -32001, "Missing or invalid bearer token (check PHONE_MCP_TOKEN)")

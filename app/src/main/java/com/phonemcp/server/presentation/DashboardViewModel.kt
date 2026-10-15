@@ -57,7 +57,35 @@ data class DashboardUiState(
     val accessibilityOn: Boolean = false,
     /** When true the window is hidden from mirrors/recents (scrcpy shows black). Default ON. */
     val secureScreen: Boolean = true,
-)
+    /**
+     * True once the user granted the QS-tile add prompt (or it was already
+     * added). Headless `adb … click-tile` start/stop silently no-ops until
+     * this is true — the hero card says so instead of failing quietly.
+     * Best-effort (grant-time signal; later manual tile removal is not
+     * re-detected), never a secret.
+     */
+    val tileAdded: Boolean = false,
+) {
+    /** True when all 7 hardware and capability kill-switches are active. */
+    val allGatesEnabled: Boolean
+        get() = micEnabled && cameraEnabled && locationEnabled && bleWriteEnabled && uiEnabled && netEnabled && externalEnabled
+
+    /** True when all required Android runtime permissions are granted. */
+    val allPermissionsGranted: Boolean
+        get() = permissions.isNotEmpty() && permissions.values.all { it }
+
+    /** True when gates, permissions, and accessibility service are fully configured for agent autonomy. */
+    val hasFullAgentAccess: Boolean
+        get() = allGatesEnabled && allPermissionsGranted && accessibilityOn
+
+    /** Number of active hardware/capability gates out of 7. */
+    val activeGateCount: Int
+        get() = listOf(micEnabled, cameraEnabled, locationEnabled, bleWriteEnabled, uiEnabled, netEnabled, externalEnabled).count { it }
+
+    /** Number of granted runtime permissions. */
+    val grantedPermissionCount: Int
+        get() = permissions.values.count { it }
+}
 
 /** IO-bound snapshot (LAN IPs, perms, theme, a11y) computed off the main thread. */
 data class DashboardNetSnapshot(
@@ -66,6 +94,7 @@ data class DashboardNetSnapshot(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val accessibilityOn: Boolean = false,
     val secureScreen: Boolean = true,
+    val tileAdded: Boolean = false,
 )
 
 @HiltViewModel
@@ -106,6 +135,7 @@ class DashboardViewModel @Inject constructor(
                 themeMode = net.themeMode,
                 accessibilityOn = net.accessibilityOn,
                 secureScreen = net.secureScreen,
+                tileAdded = net.tileAdded,
             )
         },
         externalRegistry.snapshot,
@@ -133,6 +163,7 @@ class DashboardViewModel @Inject constructor(
                     themeMode = readThemeMode(),
                     accessibilityOn = isAccessibilityEnabled(),
                     secureScreen = readSecureScreen(),
+                    tileAdded = readTileAdded(),
                 )
             }
             netState.value = snapshot
@@ -222,10 +253,29 @@ class DashboardViewModel @Inject constructor(
         refresh()
     }
 
+    /**
+     * Records a granted QS-tile add prompt (or already-added). Called from
+     * the add-tile result callback — never from the tile itself.
+     */
+    fun markTileAdded() {
+        try {
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit().putBoolean(KEY_TILE_ADDED, true).apply()
+        } catch (_: Exception) {
+        }
+        refresh()
+    }
+
     private fun readSecureScreen(): Boolean = try {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_SECURE, true)
     } catch (_: Exception) {
         true
+    }
+
+    private fun readTileAdded(): Boolean = try {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_TILE_ADDED, false)
+    } catch (_: Exception) {
+        false
     }
 
     private fun readThemeMode(): ThemeMode = try {
@@ -261,6 +311,7 @@ class DashboardViewModel @Inject constructor(
         const val PREFS = "phone_mcp_ui"
         const val KEY_THEME = "theme_mode"
         const val KEY_SECURE = "secure_screen"
+        const val KEY_TILE_ADDED = "qs_tile_added"
 
         /**
          * Matches our service in the colon-separated `ENABLED_ACCESSIBILITY_SERVICES`

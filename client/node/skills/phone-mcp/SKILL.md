@@ -11,7 +11,7 @@ Connect an agent to an Android phone exposing 47 static tools plus dynamic third
 
 ## Preconditions
 
-- Phone and agent host on the same LAN, or `adb reverse tcp:8080 tcp:8080` for USB.
+- Phone and agent host on the same LAN, or `adb -s <serial> forward tcp:8080 tcp:8080` for USB.
 - Server started on the phone (dashboard shows IP:port).
 - Pairing values available: LAN URL, bearer token, TLS SHA-256 fingerprint.
 

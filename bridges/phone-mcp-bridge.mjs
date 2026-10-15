@@ -9,6 +9,10 @@
  *
  *   Harness (stdio JSON-RPC) ⇄ this bridge ⇄ POST https://<phone>:8080/mcp
  *
+ * USB fallback (no LAN): `adb forward tcp:8080 tcp:8080`, then
+ * PHONE_MCP_URL=https://127.0.0.1:8080/mcp — never `adb reverse`
+ * (the phone already binds :8080, so reverse collides on-device).
+ *
  * Zero dependencies. Node 18+.
  *
  * Env:
@@ -155,7 +159,8 @@ async function handleLine(line) {
         -32603,
         `${detail} — verify the dashboard SHA-256 once, then set PHONE_MCP_SHA256 (or PHONE_MCP_INSECURE=1 on trusted LAN)`,
       );
-    return fail(msg.id, -32603, `Upstream unreachable: ${detail}`);
+    const hint = isLoopbackTarget(URL_) ? ` — ${usbHint()}` : "";
+    return fail(msg.id, -32603, `Upstream unreachable: ${detail}${hint}`);
   }
 }
 
@@ -228,6 +233,32 @@ export function normalizeFingerprint(hex) {
   return String(hex ?? "")
     .replace(/[^0-9a-fA-F]/g, "")
     .toLowerCase();
+}
+
+// Loopback check for USB `adb forward` mode (inline: this bridge stays
+// dependency-free and must not import the client tree).
+function isLoopbackTarget(u) {
+  try {
+    const h = String(new URL(u).hostname).toLowerCase();
+    return h === "localhost" || h === "127.0.0.1" || h === "[::1]";
+  } catch {
+    return false;
+  }
+}
+
+// Points at `adb forward` (never `adb reverse` — the phone already binds
+// :8080, so reverse collides on-device). Reflects the configured port.
+function usbHint() {
+  let port = 8080;
+  try {
+    port = Number(target.port) || 8080;
+  } catch {
+    /* keep default */
+  }
+  return (
+    `USB: run \`adb forward tcp:${port} tcp:${port}\`, then use ` +
+    `https://127.0.0.1:${port}/mcp (scripts/usb-mcp.sh setup)`
+  );
 }
 
 /**

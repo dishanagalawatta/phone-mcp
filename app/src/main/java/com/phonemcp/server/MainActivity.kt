@@ -181,7 +181,17 @@ class MainActivity : ComponentActivity() {
             getString(R.string.tile_label),
             android.graphics.drawable.Icon.createWithResource(this, R.drawable.ic_launcher_foreground),
             mainExecutor,
-        ) { _ -> }
+        ) { result ->
+            // AOSP result codes (verified against StatusBarManager source):
+            // 0 = not added, 1 = already added, 2 = added, >=1000 = error.
+            // Grant-time signal only: later manual tile removal is not
+            // re-detected, so the hero hint may over-claim, never under-claim.
+            if (result == android.app.StatusBarManager.TILE_ADD_REQUEST_RESULT_TILE_ADDED ||
+                result == android.app.StatusBarManager.TILE_ADD_REQUEST_RESULT_TILE_ALREADY_ADDED
+            ) {
+                viewModel.markTileAdded()
+            }
+        }
     }
 
     /** Pinned widget request (API 26+); the system asks the user to confirm placement. */

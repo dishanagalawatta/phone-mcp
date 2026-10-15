@@ -50,6 +50,37 @@ harness reads (project-scoped, or global when `--cwd ~`). Staged copies are
 static markdown: the live token/pin are never written into them (the stage
 aborts if either is found; ADR-0031).
 
+## USB mode (no LAN)
+
+Canonical transport is host-side `adb forward` — never `adb reverse`
+(which fails with `cannot bind listener: Address already in use` because the
+phone's Ktor listener already holds device:8080; ADR-0036):
+
+```bash
+adb -s <serial> forward tcp:8080 tcp:8080
+export PHONE_MCP_URL="https://127.0.0.1:8080/mcp"
+```
+
+Helpers (wrap the same `forward`; with one phone attached the serial is
+auto-picked, with several pass `--serial` from `adb devices -l`):
+
+```bash
+phone-mcp usb                               # forward + print loopback URL
+phone-mcp usb --serial <serial>             # pick among several phones
+phone-mcp smoke --usb                       # smoke over https://127.0.0.1:8080/mcp
+phone-mcp configure --usb --harness all --out ./generated-harness
+# equivalent to configure with PHONE_MCP_URL=https://127.0.0.1:8080/mcp
+```
+
+Same token + same SHA-256 pin as LAN (fingerprint identical; pin/cafile
+modes skip the hostname check so `127.0.0.1` verifies). `/healthz` stays
+open; `/mcp` + `/media/*` + `/info` still need Bearer. USB debugging must
+be on; `unauthorized`/`offline` means re-authorize/re-plug; Windows needs
+the OEM USB driver. Manage pins with `adb forward --list`,
+`adb forward --remove tcp:8080`, `adb forward --remove-all`. Prefer
+`scripts/usb-mcp.sh` for a one-shot forward + healthz + fingerprint check
+(`setup`/`status`/`check`/`remove`, `--serial` for multi-device).
+
 ## Harness matrix
 
 | Harness | `configure --harness` | Install target | Verify |

@@ -43,6 +43,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.phonemcp.server.presentation.UsbTransport
 import com.phonemcp.server.presentation.pairingQrBitmap
 import com.phonemcp.server.service.Pairing.groupedFingerprint
 import com.phonemcp.server.service.Pairing.pairingPayload
@@ -169,6 +170,66 @@ fun AgentPairingCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // USB cable path (no Wi-Fi needed): host-side adb forward +
+            // loopback URL. Same token + SHA-256 pin as above (display-only).
+            val usbCommand = remember(endpointUrl) { UsbTransport.forwardCommand(endpointUrl) }
+            val usbUrl = remember(endpointUrl) { UsbTransport.loopbackUrl(endpointUrl) }
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Text(
+                        text = "USB cable (no Wi-Fi needed)",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = usbCommand,
+                        fontFamily = FontFamily.Monospace,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = usbUrl,
+                        fontFamily = FontFamily.Monospace,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "Same token + SHA-256 pin as above. Add -s <serial> when several devices are attached (adb devices). Never adb reverse.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                TextButton(
+                    onClick = { onCopy("usb-command", usbCommand) },
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text("Copy USB cmd")
+                }
+                TextButton(
+                    onClick = { onCopy("usb-url", usbUrl) },
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text("Copy USB URL")
                 }
             }
 

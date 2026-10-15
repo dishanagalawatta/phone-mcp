@@ -5,7 +5,7 @@ Local-only configuration for Phone MCP. No cloud, no telemetry.
 ## Prerequisites
 
 - Android Studio Giraffe+, JDK 17, Android SDK 35, device/emulator API 29+
-- Same WiFi for phone + agent host; `adb` for USB fallback (`adb reverse tcp:8080 tcp:8080`)
+- Same WiFi for phone + agent host; `adb` for USB fallback (`adb -s <serial> forward tcp:8080 tcp:8080` → `PHONE_MCP_URL=https://127.0.0.1:8080/mcp`; never `adb reverse` — it collides with the phone's :8080 listener, ADR-0036)
 
 ## Setup
 
@@ -33,6 +33,11 @@ Open folder in Android Studio, let it provision Gradle wrapper + SDK 35, then Ru
 | `ANDROID_HOME` | SDK override (else `local.properties` `sdk.dir`) | `$HOME/Android/Sdk` |
 | Media TTL / cap (`FileMediaStore`) | sidecar eviction | `15 min / 100 MB` |
 | Kill-switches (`Gatekeeper`) | `audio_*`, `camera_*`, `net_*`, `ui_*` default OFF | OFF |
+
+USB note: over `adb forward` set `PHONE_MCP_URL=https://127.0.0.1:8080/mcp`
+(same `PHONE_MCP_TOKEN` + `PHONE_MCP_SHA256` as LAN — fingerprint identical;
+pin/cafile modes skip the hostname check so loopback verifies). Full USB
+walkthrough: `docs/harness.md` §1 + ADR-0036.
 
 ## Verify
 

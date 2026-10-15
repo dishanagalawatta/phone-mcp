@@ -20,6 +20,7 @@ import {
   resolveTls,
   verifyPinAgainstHost,
 } from './tls.mjs';
+import { isLoopbackUrl, portOfUrl, usbSetupHint } from './usb.mjs';
 
 export const MCP_PROTOCOL_VERSION = '2025-06-18';
 
@@ -78,7 +79,16 @@ function budgets(cfg) {
   return { ceiling: cfg.timeoutMs, fast: cfg.fastMs, margin: cfg.marginMs };
 }
 
-export function actionableTransportError(detail) {
+/** USB hint suffix for loopback failures (forgot `adb forward`, wrong port). */
+function usbSuffix(url) {
+  try {
+    return url && isLoopbackUrl(url) ? ` — ${usbSetupHint(portOfUrl(url))}` : '';
+  } catch {
+    return '';
+  }
+}
+
+export function actionableTransportError(detail, url = '') {
   const lowered = String(detail).toLowerCase();
   if (lowered.includes('fingerprint mismatch')) return String(detail);
   if (lowered.includes('certificate') || lowered.includes('self-signed') || lowered.includes('verify failed')) {
@@ -88,9 +98,9 @@ export function actionableTransportError(detail) {
     );
   }
   if (lowered.includes('timed out') || lowered.includes('timeout')) {
-    return detail + ' — tool budget exceeded (raise PHONE_MCP_TIMEOUT_MS/FAST_MS/MARGIN_MS if legitimate)';
+    return detail + ` — tool budget exceeded (raise PHONE_MCP_TIMEOUT_MS/FAST_MS/MARGIN_MS if legitimate)${usbSuffix(url)}`;
   }
-  return `Upstream unreachable: ${detail}`;
+  return `Upstream unreachable: ${detail}${usbSuffix(url)}`;
 }
 
 /**
@@ -213,7 +223,7 @@ export async function rpc(cfg, body, timeoutS = null, deps = {}) {
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
     if (/fingerprint mismatch/i.test(detail)) return [null, detail];
-    return [null, actionableTransportError(detail)];
+    return [null, actionableTransportError(detail, cfg.url)];
   }
   if (status === 401 || status === 403) {
     return [null, 'HTTP 401 Missing or invalid bearer token (check PHONE_MCP_TOKEN)'];
@@ -405,7 +415,7 @@ export async function handleStdioLine(line, cfg, deps = {}) {
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
     if (/fingerprint mismatch/i.test(detail)) return fail(reqId, -32603, detail);
-    return fail(reqId, -32603, actionableTransportError(detail));
+    return fail(reqId, -32603, actionableTransportError(detail, cfg.url));
   }
   if (status === 401 || status === 403) {
     return fail(reqId, -32001, 'Missing or invalid bearer token (check PHONE_MCP_TOKEN)');

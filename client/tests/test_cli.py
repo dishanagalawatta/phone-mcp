@@ -125,5 +125,83 @@ class FlagPositionTest(unittest.TestCase):
         self.assertEqual(rc, CLI.EXIT_USAGE)
 
 
+class UsbCliTest(unittest.TestCase):
+    """`phone-mcp usb` with mocked adb (no device needed)."""
+
+    def _run_main(self, argv):
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = CLI.main(argv)
+        return rc, buf.getvalue()
+
+    def test_setup_explicit_serial_forwards(self):
+        with mock.patch("phone_mcp_client.usb.run_adb",
+                        return_value=(0, "", "")) as run, \
+             mock.patch("phone_mcp_client.cli._usb_health_check",
+                        return_value=(True, "https://127.0.0.1:8080/healthz → HTTP 200")):
+            rc, out = self._run_main(["usb", "setup", "--serial", "ABC123"])
+        self.assertEqual(rc, 0)
+        self.assertIn("USB ready", out)
+        argv = run.call_args[0][0]
+        self.assertEqual(argv, ["adb", "-s", "ABC123", "forward", "tcp:8080", "tcp:8080"])
+        self.assertNotIn("reverse", argv)
+
+    def test_setup_auto_picks_single_device(self):
+        calls = []
+
+        def fake_run(args, timeout):
+            calls.append(args)
+            if args[:2] == ["adb", "devices"]:
+                return (0, "List of devices attached\nONLY1\tdevice\n", "")
+            return (0, "", "")
+
+        with mock.patch("phone_mcp_client.usb.run_adb", side_effect=fake_run), \
+             mock.patch("phone_mcp_client.cli._usb_health_check",
+                        return_value=(True, "ok")):
+            rc, _ = self._run_main(["usb", "setup"])
+        self.assertEqual(rc, 0)
+        self.assertIn(["adb", "-s", "ONLY1", "forward", "tcp:8080", "tcp:8080"], calls)
+
+    def test_setup_multi_device_needs_serial(self):
+        def fake_run(args, timeout):
+            if args[:2] == ["adb", "devices"]:
+                return (0, "List of devices attached\nA\tdevice\nB\tdevice\n", "")
+            raise AssertionError(f"forward must not run: {args}")
+
+        with mock.patch("phone_mcp_client.usb.run_adb", side_effect=fake_run):
+            rc, _ = self._run_main(["usb", "setup"])
+        self.assertNotEqual(rc, 0)
+
+    def test_remove_absent_mapping_is_clean(self):
+        with mock.patch("phone_mcp_client.usb.run_adb",
+                        return_value=(1, "", "adb: error: listener 'tcp:8080' not found")):
+            rc, out = self._run_main(["usb", "remove", "--serial", "ABC123"])
+        self.assertEqual(rc, 0)
+        self.assertIn("already clean", out)
+
+    def test_status_lists_devices_and_forwards(self):
+        def fake_run(args, timeout):
+            if args == ["adb", "devices", "-l"]:
+                return (0, "List of devices attached\nABC123\tdevice\n", "")
+            if args == ["adb", "forward", "--list"]:
+                return (0, "ABC123 tcp:8080 tcp:8080\n", "")
+            raise AssertionError(f"unexpected adb: {args}")
+
+        with mock.patch("phone_mcp_client.usb.run_adb", side_effect=fake_run):
+            rc, out = self._run_main(["usb", "status"])
+        self.assertEqual(rc, 0)
+        self.assertIn("ABC123", out)
+        self.assertIn("tcp:8080", out)
+
+    def test_check_uses_health_only(self):
+        with mock.patch("phone_mcp_client.usb.run_adb",
+                        side_effect=AssertionError("adb must not run on check")), \
+             mock.patch("phone_mcp_client.cli._usb_health_check",
+                        return_value=(True, "https://127.0.0.1:8080/healthz → HTTP 200")):
+            rc, out = self._run_main(["usb", "check"])
+        self.assertEqual(rc, 0)
+        self.assertIn("PASS", out)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -29,7 +29,7 @@ phone-mcp smoke                # expect 4x PASS
 phone-mcp configure --harness all --out ./generated-harness
 ```
 
-USB fallback: `adb reverse tcp:8080 tcp:8080`, then use `https://127.0.0.1:8080/mcp`. Headless start/stop needs the QS tile added once: `adb shell cmd statusbar click-tile com.phonemcp.server/.service.McpServerTile`.
+USB fallback: `adb -s <serial> forward tcp:8080 tcp:8080`, then use `https://127.0.0.1:8080/mcp` (same token + SHA-256 pin; pin/cafile modes skip the hostname check so loopback works). Headless start/stop needs the QS tile added once: `adb shell cmd statusbar click-tile com.phonemcp.server/.service.McpServerTile`.
 
 ## TLS modes (`PHONE_MCP_*` env)
 

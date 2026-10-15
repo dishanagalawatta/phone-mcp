@@ -11,6 +11,8 @@
 #
 # Flags: --from-qr JSON | --url U --token T --sha256 H [--bridge node|python]
 #        [--harness all|opencode|claude|codex|vscode|cursor|gemini|cline|windsurf|generic]
+#        [--usb]: rewrite URL host to 127.0.0.1 (USB cable via `adb forward`,
+#        keeping port/path — run scripts/usb-mcp.sh setup first)
 #        [--out DIR (default ./generated-harness)] [--install] [--print-only] [--help]
 #        [--no-skills] [--skills-dir DIR (default OUT/skills)]: stage the 6
 #        phone-mcp agent skills next to the configs (and into ./.agents/skills
@@ -31,6 +33,7 @@ CA_OUT=./phone-mcp-ca.pem
 URL=""
 TOKEN=""
 SHA=""
+USB=0
 
 usage() { sed -n '2,14p' "$0"; exit "${1:-0}"; }
 
@@ -52,6 +55,7 @@ while [ $# -gt 0 ]; do
     --skills-dir) SKILLS_DIR="$2"; shift 2 ;;
     --export-ca) EXPORT_CA=1; shift ;;
     --ca-out) CA_OUT="$2"; shift 2 ;;
+    --usb) USB=1; shift ;;
     -h|--help) usage 0 ;;
     *) echo "unknown flag $1" >&2; usage 1 ;;
   esac
@@ -63,6 +67,11 @@ if [ -z "$URL" ] || [ -z "$TOKEN" ]; then
   exit 1
 fi
 case "$BRIDGE" in node|python) ;; *) echo "error: --bridge must be node|python" >&2; exit 1 ;; esac
+
+if [ "$USB" = 1 ]; then
+  URL=$(python3 -c "import sys,urllib.parse; u=urllib.parse.urlparse(sys.argv[1]); print(urllib.parse.urlunparse((u.scheme or 'https', '127.0.0.1:' + str(u.port or 8080), u.path or '/mcp', '', '', '')))" "$URL")
+  echo "usb: rewrote URL host → 127.0.0.1 (needs 'adb forward tcp:PORT tcp:PORT' — run scripts/usb-mcp.sh setup)"
+fi
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 BRIDGE_CMD_NODE='["node", "bridges/phone-mcp-bridge.mjs"]'
@@ -209,7 +218,9 @@ export PHONE_MCP_TOKEN='<paste-from-pairing-card>'
 export PHONE_MCP_SHA256="${SHA:-<dashboard-fingerprint>}"
 python3 scripts/phone-mcp-smoke.py --url "\$PHONE_MCP_URL" --token "\$PHONE_MCP_TOKEN" ${SHA:+--sha256 "$SHA"}
 # Verified direct-remote mode (no bridge): ./scripts/export-ca.sh --host <lan-ip> --port 8080 --sha256 "\$PHONE_MCP_SHA256"
-# USB fallback: adb reverse tcp:8080 tcp:8080  →  PHONE_MCP_URL=https://127.0.0.1:8080/mcp
+# USB fallback: scripts/usb-mcp.sh setup  (runs: adb forward tcp:8080 tcp:8080 — NOT
+# adb reverse, which cannot bind device:8080)  →  PHONE_MCP_URL=https://127.0.0.1:8080/mcp
+# (or re-run this script with --usb to rewrite the URL host to 127.0.0.1).
 # Full guide: docs/harness.md · examples: config/harness-examples/
 EOF
 

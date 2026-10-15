@@ -53,6 +53,13 @@ fun ServerHeroCard(
     onAddWidget: () -> Unit,
     onCopyEndpoint: (String) -> Unit,
     modifier: Modifier = Modifier,
+    /**
+     * False until the user grants the QS-tile add prompt. Headless
+     * `adb … click-tile` start/stop silently no-ops without the tile, so an
+     * explicit hint beats a quiet failure. Defaults true so existing call
+     * sites stay source-compatible.
+     */
+    tileAdded: Boolean = true,
 ) {
     ElevatedCard(
         modifier = modifier.fillMaxWidth(),
@@ -228,6 +235,24 @@ fun ServerHeroCard(
                     shape = RoundedCornerShape(10.dp),
                 ) {
                     Text("Add widget", fontSize = 12.sp)
+                }
+            }
+
+            if (!tileAdded) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        text = "Headless adb start needs the QS tile once — tap Add QS tile, then " +
+                            "adb shell cmd statusbar click-tile com.phonemcp.server/.service.McpServerTile " +
+                            "works with no taps.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(12.dp),
+                    )
                 }
             }
         }
