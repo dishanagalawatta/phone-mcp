@@ -35,6 +35,7 @@ class ExternalRouterTest {
 
         init {
             registry.register("com.example.notes", descriptor("notes", "search"))
+            registry.setApproved("notes", true, forceLocal = true)
         }
     }
 
@@ -121,6 +122,7 @@ class ExternalRouterTest {
         val info = router.serverInfo()
         assertEquals("1", info["externalCapabilities"]!!.jsonPrimitive.content)
         assertEquals("1", info["externalTools"]!!.jsonPrimitive.content)
-        assertEquals("1", info["capabilitiesVersion"]!!.jsonPrimitive.content)
+        // register (1) + approve (2): every list-affecting change bumps.
+        assertEquals("2", info["capabilitiesVersion"]!!.jsonPrimitive.content)
     }
 }

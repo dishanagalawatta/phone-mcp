@@ -75,6 +75,7 @@ fun DashboardScreen(
     onNetToggle: (Boolean) -> Unit,
     onExternalToggle: (Boolean) -> Unit = {},
     onUnregisterExternal: (String) -> Unit = {},
+    onExternalApproval: (String, Boolean) -> Unit = { _, _ -> },
     onRescanExternal: () -> Unit = {},
     onStartVpn: () -> Unit,
     onStopVpn: () -> Unit,
@@ -194,6 +195,8 @@ fun DashboardScreen(
                 if (selectedCategory == DashboardCategory.ALL || selectedCategory == DashboardCategory.GUARDRAILS) {
                     ExternalCapabilitiesCard(
                         capabilities = state.externalCapabilities,
+                        onApprove = { onExternalApproval(it, true) },
+                        onRevoke = { onExternalApproval(it, false) },
                         onUnregister = onUnregisterExternal,
                         onRescan = onRescanExternal,
                     )

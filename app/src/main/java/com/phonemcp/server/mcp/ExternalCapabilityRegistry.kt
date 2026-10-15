@@ -28,6 +28,8 @@ data class ExternalCapability(
     val tools: List<ExternalToolSpec>,
     /** SHA-256 of the provider's signing cert (audit trail, may be empty). */
     val signerSha256: String = "",
+    /** Explicit user approval (dashboard or `capabilities_approve`). Default deny. */
+    val approved: Boolean = false,
     val registeredAtMs: Long = 0L,
     val lastHeartbeatMs: Long = 0L,
 )
@@ -111,18 +113,47 @@ class ExternalCapabilityRegistry @Inject constructor(
             val tools = CapabilityIpcContract.parseTools(descriptor).map { (name, description, schema) ->
                 ExternalToolSpec(name, description, schema)
             }
+            val signer = signerSha256.ifBlank { existing?.signerSha256.orEmpty() }
+            if (existing != null && existing.signerSha256.isNotEmpty() && signer != existing.signerSha256) {
+                return RegisterOutcome.Rejected(
+                    listOf("signer changed for '$id' (was ${existing.signerSha256.take(16)}…) — unregister first"),
+                )
+            }
             capabilities[id] = ExternalCapability(
                 id = id,
                 packageName = packageName,
                 displayName = CapabilityIpcContract.stringField(descriptor, "displayName", id),
                 version = CapabilityIpcContract.stringField(descriptor, "version", "0"),
                 tools = tools,
-                signerSha256 = signerSha256.ifBlank { existing?.signerSha256.orEmpty() },
+                signerSha256 = signer,
+                // Approval survives same-owner re-registration (re-announce after
+                // reboot must not nuke consent); a new owner starts denied.
+                approved = existing?.approved ?: false,
                 registeredAtMs = existing?.registeredAtMs ?: now,
                 lastHeartbeatMs = now,
             )
             publishLocked()
             return RegisterOutcome.Ok(tools.map { CapabilityIpcContract.namespacedName(id, it.name) })
+        }
+    }
+
+    /**
+     * Sets user approval for a capability (default deny). IPC callers pass
+     * their Binder-verified package and can only touch their own record;
+     * local management (dashboard, `capabilities_approve`) passes
+     * `forceLocal = true` (already bearer-authenticated).
+     */
+    fun setApproved(id: String, approved: Boolean, requesterPackage: String? = null, forceLocal: Boolean = false): Boolean {
+        synchronized(lock) {
+            val existing = capabilities[id] ?: return false
+            if (!forceLocal && requesterPackage != null && existing.packageName != requesterPackage) {
+                return false
+            }
+            if (existing.approved != approved) {
+                capabilities[id] = existing.copy(approved = approved)
+                publishLocked()
+            }
+            return true
         }
     }
 
@@ -205,6 +236,14 @@ class ExternalCapabilityRegistry @Inject constructor(
                 "Unknown tool: $name",
                 rpcCode = JsonRpcCodes.INVALID_PARAMS,
             )
+        // Per-capability consent (second gate after the `ext_` master switch
+        // in McpRouter/Gatekeeper): default deny until explicitly approved.
+        if (!resolved.capability.approved) {
+            return ToolCallResult.error(
+                "Capability '${resolved.capability.id}' is not approved " +
+                    "(approve on the dashboard or via capabilities_approve)",
+            )
+        }
         return try {
             withTimeoutOrNull(EXTERNAL_CALL_TIMEOUT_MS) {
                 invoker.invoke(resolved.capability, resolved.spec.name, args)

@@ -16,6 +16,7 @@ import com.phonemcp.server.data.ExternalCapabilityDiscovery
 import com.phonemcp.server.domain.Gatekeeper
 import com.phonemcp.server.domain.LogBuffer
 import com.phonemcp.server.mcp.ExternalCapabilityRegistry
+import com.phonemcp.server.presentation.components.ExternalCapabilityEntry
 import com.phonemcp.server.presentation.theme.ThemeMode
 import com.phonemcp.server.service.McpServerService
 import com.phonemcp.server.service.NetInspectVpnService
@@ -50,8 +51,8 @@ data class DashboardUiState(
     val vpnRunning: Boolean = false,
     /** Third-party proxied tools (`ext_*`) master switch. Default OFF (untrusted). */
     val externalEnabled: Boolean = false,
-    /** Registered third-party capability ids (dashboard audit list). */
-    val externalCapabilities: List<String> = emptyList(),
+    /** Registered third-party capabilities (id + invocation consent). */
+    val externalCapabilities: List<ExternalCapabilityEntry> = emptyList(),
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val accessibilityOn: Boolean = false,
     /** When true the window is hidden from mirrors/recents (scrcpy shows black). Default ON. */
@@ -109,7 +110,11 @@ class DashboardViewModel @Inject constructor(
         },
         externalRegistry.snapshot,
     ) { ui, external ->
-        ui.copy(externalCapabilities = external.map { it.id }.sorted())
+        ui.copy(
+            externalCapabilities = external
+                .map { ExternalCapabilityEntry(it.id, it.approved) }
+                .sortedBy { it.id },
+        )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, DashboardUiState())
 
     /** Re-reads running flag, addresses, permission states, and ensures pairing material exists. */
@@ -176,6 +181,12 @@ class DashboardViewModel @Inject constructor(
     /** Removes a third-party capability (dashboard owner action, bearer-gated by the app itself). */
     fun unregisterExternal(capabilityId: String) {
         externalRegistry.unregister(capabilityId, forceLocal = true)
+        tick.value += 1
+    }
+
+    /** Sets per-capability invocation consent from the dashboard card. */
+    fun setExternalApproval(capabilityId: String, approved: Boolean) {
+        externalRegistry.setApproved(capabilityId, approved, forceLocal = true)
         tick.value += 1
     }
 

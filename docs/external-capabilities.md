@@ -81,8 +81,12 @@ curl … -d '{"jsonrpc":"2.0","id":2,"method":"tools/call",
 
 ## Calling a third-party tool
 
-Standard `tools/call` with the namespaced name (needs the dashboard
-External switch ON, else `isError` "disabled by kill-switch"):
+Standard `tools/call` with the namespaced name. Invocation needs two
+consents: the dashboard External switch ON (else `isError` "disabled by
+kill-switch") AND per-capability approval — dashboard Approve button or
+`capabilities_approve` (else `isError` "not approved"). Signer pins are
+enforced: a re-registration with a changed signing key is rejected until
+the old record is unregistered.
 
 ```bash
 curl … -d '{"jsonrpc":"2.0","id":3,"method":"tools/call",

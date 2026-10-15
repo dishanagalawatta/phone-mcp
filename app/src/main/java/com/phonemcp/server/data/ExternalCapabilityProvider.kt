@@ -65,6 +65,24 @@ class ExternalCapabilityProvider @Inject constructor(
             ),
         ),
         ToolDefinition(
+            "capabilities_approve",
+            "Approve a capability for invocation (per-capability consent, default deny). Args: capabilityId (required).",
+            objectSchema(
+                buildJsonObject {
+                    put("capabilityId", prop("string", "Capability id to approve"))
+                },
+            ),
+        ),
+        ToolDefinition(
+            "capabilities_revoke",
+            "Revoke a capability's invocation consent (record stays listed). Args: capabilityId (required).",
+            objectSchema(
+                buildJsonObject {
+                    put("capabilityId", prop("string", "Capability id to revoke"))
+                },
+            ),
+        ),
+        ToolDefinition(
             "capabilities_rescan",
             "Re-query installed provider apps for their authoritative descriptors. " +
                 "Args: packageName (optional — rescan one app, default all).",
@@ -92,6 +110,7 @@ class ExternalCapabilityProvider @Inject constructor(
                                         put("packageName", capability.packageName)
                                         put("displayName", capability.displayName)
                                         put("version", capability.version)
+                                        put("approved", capability.approved)
                                         put(
                                             "tools",
                                             JsonArray(
@@ -147,6 +166,22 @@ class ExternalCapabilityProvider @Inject constructor(
                 if (!removed) return ToolCallResult.error("Unknown capability: $capabilityId")
                 log.append("capability unregistered $capabilityId")
                 return ToolCallResult.text("unregistered $capabilityId")
+            }
+            "capabilities_approve" -> {
+                val capabilityId = ArgParser.string(args, "capabilityId", "")
+                require(capabilityId.isNotBlank()) { "capabilityId is required" }
+                val ok = registry.setApproved(capabilityId, true, forceLocal = true)
+                if (!ok) return ToolCallResult.error("Unknown capability: $capabilityId")
+                log.append("capability approved $capabilityId")
+                return ToolCallResult.text("approved $capabilityId")
+            }
+            "capabilities_revoke" -> {
+                val capabilityId = ArgParser.string(args, "capabilityId", "")
+                require(capabilityId.isNotBlank()) { "capabilityId is required" }
+                val ok = registry.setApproved(capabilityId, false, forceLocal = true)
+                if (!ok) return ToolCallResult.error("Unknown capability: $capabilityId")
+                log.append("capability approval revoked $capabilityId")
+                return ToolCallResult.text("revoked $capabilityId")
             }
             "capabilities_rescan" -> {
                 val packageName = ArgParser.string(args, "packageName", "").ifBlank { null }

@@ -4,7 +4,7 @@ Base: `https://<phone-lan-ip>:8080`. TLS-only (self-signed TOFU — verify SHA-2
 
 Auth: `Authorization: Bearer <token>` (dashboard pairing card, QR, rotation) on `/mcp`, `/media/*`, `/info`. `/healthz` open. Failure → HTTP 401 + JSON-RPC `-32001`.
 
-Generated from `mcp/McpRouter.kt` + `data/*Provider.kt` + `NetInspectCatalog.kt`. `tools/list` declares **45 static tools** (28 + 13 `net_*` + 4 `capabilities_*`) plus dynamic `ext_<app>__<tool>` entries from registered third-party capabilities (see below). `initialize` advertises `capabilities.tools.listChanged: true`.
+Generated from `mcp/McpRouter.kt` + `data/*Provider.kt` + `NetInspectCatalog.kt`. `tools/list` declares **47 static tools** (28 + 13 `net_*` + 6 `capabilities_*`) plus dynamic `ext_<app>__<tool>` entries from registered third-party capabilities (see below). `initialize` advertises `capabilities.tools.listChanged: true`.
 
 ## Transports
 
@@ -28,12 +28,18 @@ as `ext_<capabilityId>__<tool>` in `tools/list` and standard `tools/call`.
 | `capabilities_list` | — | Registry snapshot + `capabilitiesVersion` (poll for changes). |
 | `capabilities_register` | `capabilityId` + `packageName` (req), `displayName`, `version`, `tools[]` (req) | Provisions a record for an installed provider app. |
 | `capabilities_unregister` | `capabilityId` (req) | Removes a record. |
+| `capabilities_approve` | `capabilityId` (req) | Grants per-capability invocation consent (default deny). |
+| `capabilities_revoke` | `capabilityId` (req) | Revokes consent (record stays listed). |
 | `capabilities_rescan` | `packageName` (opt) | Re-fetches authoritative descriptors from installed provider apps. |
 
-Invocation of `ext_*` tools is gated by the `ext_` kill-switch (dashboard
-**External App Capabilities**, default OFF); unenabled calls return
-`isError` naming the kill-switch. Unknown/malformed `ext_*` names return
-`-32602`; unreachable providers and timeouts (>25 s) return `isError`.
+Invocation of `ext_*` tools needs BOTH gates: the `ext_` kill-switch
+(dashboard **External App Capabilities**, default OFF) AND per-capability
+approval. Unenabled calls return `isError` naming the kill-switch;
+unapproved calls return `isError` pointing at `capabilities_approve`.
+Signer pins are adopted on first sight and enforced on re-registration
+(changed signer → rejected until unregistered). Unknown/malformed `ext_*`
+names return `-32602`; unreachable providers and timeouts (>25 s) return
+`isError`.
 
 ## Calling convention
 

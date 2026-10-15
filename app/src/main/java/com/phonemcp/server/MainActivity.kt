@@ -97,6 +97,7 @@ class MainActivity : ComponentActivity() {
                     onNetToggle = viewModel::setNetEnabled,
                     onExternalToggle = viewModel::setExternalEnabled,
                     onUnregisterExternal = viewModel::unregisterExternal,
+                    onExternalApproval = viewModel::setExternalApproval,
                     onRescanExternal = viewModel::rescanExternal,
                     onThemeChange = viewModel::setThemeMode,
                     onSecureChange = viewModel::setSecureScreen,

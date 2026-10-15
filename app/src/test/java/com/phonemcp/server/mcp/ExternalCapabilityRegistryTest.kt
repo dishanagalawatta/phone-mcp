@@ -134,6 +134,7 @@ class ExternalCapabilityRegistryTest {
     fun callRoutesToInvoker() = runBlocking {
         val registry = registry()
         registry.register("com.example.a", descriptor("notes", "search"))
+        registry.setApproved("notes", true, forceLocal = true)
         val result = registry.callTool("ext_notes__search", buildJsonObject { })
         assertFalse(result.isError)
         assertEquals("ok:search", result.content[0]["text"]!!.jsonPrimitive.content)
@@ -176,5 +177,57 @@ class ExternalCapabilityRegistryTest {
         val extra = registry.serverInfoExtra()
         assertEquals(2, extra["externalTools"]!!.jsonPrimitive.int)
         assertEquals(1, extra["externalCapabilities"]!!.jsonPrimitive.int)
+    }
+
+    @Test
+    fun approvalDefaultsDenyAndGatesCall() = runBlocking {
+        val registry = registry()
+        registry.register("com.example.a", descriptor("notes", "search"))
+        val denied = registry.callTool("ext_notes__search", buildJsonObject { })
+        assertTrue(denied.isError)
+        assertTrue(denied.content[0]["text"]!!.jsonPrimitive.content.contains("not approved"))
+        assertTrue(registry.setApproved("notes", true, forceLocal = true))
+        assertFalse(registry.callTool("ext_notes__search", buildJsonObject { }).isError)
+        assertTrue(registry.setApproved("notes", false, forceLocal = true))
+        assertTrue(registry.callTool("ext_notes__search", buildJsonObject { }).isError)
+    }
+
+    @Test
+    fun setApprovedRejectsOtherOwner() = runBlocking {
+        val registry = registry()
+        registry.register("com.example.a", descriptor("notes", "search"))
+        assertFalse(registry.setApproved("notes", true, requesterPackage = "com.example.b"))
+        assertTrue(registry.callTool("ext_notes__search", buildJsonObject { }).isError)
+    }
+
+    @Test
+    fun approvalSurvivesSameOwnerReregister() = runBlocking {
+        val registry = registry()
+        registry.register("com.example.a", descriptor("notes", "search"))
+        registry.setApproved("notes", true, forceLocal = true)
+        registry.register("com.example.a", descriptor("notes", "search", "add"))
+        assertFalse(registry.callTool("ext_notes__add", buildJsonObject { }).isError)
+    }
+
+    @Test
+    fun signerChangeRejected() {
+        val registry = registry()
+        val first = registry.register("com.example.a", descriptor("notes", "search"), signerSha256 = "aa")
+        assertTrue(first is ExternalCapabilityRegistry.RegisterOutcome.Ok)
+        val hijack = registry.register("com.example.a", descriptor("notes", "search"), signerSha256 = "bb")
+        assertTrue(hijack is ExternalCapabilityRegistry.RegisterOutcome.Rejected)
+        assertTrue(
+            (hijack as ExternalCapabilityRegistry.RegisterOutcome.Rejected)
+                .errors.any { it.contains("signer changed") },
+        )
+    }
+
+    @Test
+    fun emptySignerAdoptsFirstPin() {
+        val registry = registry()
+        registry.register("com.example.a", descriptor("notes", "search"))
+        val outcome = registry.register("com.example.a", descriptor("notes", "search"), signerSha256 = "aa")
+        assertTrue(outcome is ExternalCapabilityRegistry.RegisterOutcome.Ok)
+        assertEquals("aa", registry.listCapabilities().first().signerSha256)
     }
 }

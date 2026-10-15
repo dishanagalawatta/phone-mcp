@@ -25,12 +25,19 @@ import androidx.compose.ui.unit.dp
 /**
  * On-device directory of third-party capabilities registered via local IPC
  * (bound service, directory provider, announce broadcast) or the
- * `capabilities_*` MCP tools. Owners can remove entries and trigger a
- * rescan of installed provider apps.
+ * `capabilities_*` MCP tools. Owners can approve/revoke invocation consent,
+ * remove entries, and trigger a rescan of installed provider apps.
  */
+data class ExternalCapabilityEntry(
+    val id: String,
+    val approved: Boolean,
+)
+
 @Composable
 fun ExternalCapabilitiesCard(
-    capabilities: List<String>,
+    capabilities: List<ExternalCapabilityEntry>,
+    onApprove: (String) -> Unit = {},
+    onRevoke: (String) -> Unit = {},
     onUnregister: (String) -> Unit = {},
     onRescan: () -> Unit = {},
     modifier: Modifier = Modifier,
@@ -79,7 +86,7 @@ fun ExternalCapabilitiesCard(
                     modifier = Modifier.testTag("external_empty"),
                 )
             } else {
-                capabilities.forEach { id ->
+                capabilities.forEach { entry ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -87,18 +94,43 @@ fun ExternalCapabilitiesCard(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
-                        Text(
-                            text = id,
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                fontWeight = FontWeight.Medium,
-                            ),
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.weight(1f),
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = entry.id,
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontWeight = FontWeight.Medium,
+                                ),
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                            Text(
+                                text = if (entry.approved) "approved for invocation" else "needs approval",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (entry.approved) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        if (entry.approved) {
+                            TextButton(
+                                onClick = { onRevoke(entry.id) },
+                                modifier = Modifier.testTag("external_revoke_${entry.id}"),
+                            ) {
+                                Text(text = "Revoke")
+                            }
+                        } else {
+                            TextButton(
+                                onClick = { onApprove(entry.id) },
+                                modifier = Modifier.testTag("external_approve_${entry.id}"),
+                            ) {
+                                Text(text = "Approve")
+                            }
+                        }
                         TextButton(
-                            onClick = { onUnregister(id) },
-                            modifier = Modifier.testTag("external_remove_$id"),
+                            onClick = { onUnregister(entry.id) },
+                            modifier = Modifier.testTag("external_remove_${entry.id}"),
                             colors = ButtonDefaults.textButtonColors(
                                 contentColor = MaterialTheme.colorScheme.error,
                             ),

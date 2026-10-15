@@ -73,7 +73,7 @@ Agents connect via `POST https://<phone-lan-ip>:8080/mcp` (JSON-RPC 2.0, Streama
 ## Key Features
 
 - **Secure by default** — bearer token (EncryptedSharedPreferences, QR pairing, one-tap rotation); TLS-only listener with fail-closed TOFU fingerprint; LAN-only bind + Origin check.
-- **Standard MCP endpoint** — `initialize`, `tools/list` (45 static tools + dynamic `ext_*`), `tools/call`, `ping`; tool failures return `isError:true`, protocol errors only `-32601/-32602/-32603` (+ `-32001` auth, `-32600` transport).
+- **Standard MCP endpoint** — `initialize`, `tools/list` (47 static tools + dynamic `ext_*`), `tools/call`, `ping`; tool failures return `isError:true`, protocol errors only `-32601/-32602/-32603` (+ `-32001` auth, `-32600` transport).
 - **Guardrailed** — kill-switches default OFF for `audio_*`, `camera_*`, `net_*`, `ui_*`, `ext_*` (third-party), and `ble_write`; runtime permission explainers in the dashboard.
 - **Modern dashboard** — Compose Material3 + Material You dynamic color, System/Light/Dark mode, server hero card, pairing QR, live tool-call log, QS-tile/widget pins. Secure window (`FLAG_SECURE`) so token/QR never leak into mirrors or recents.
 - **Clean layers** — pure-Kotlin `mcp/` (no `android.*`, JVM unit-testable) → `domain/` contracts → `data/` framework → `service/` Ktor foreground service → `presentation/` Compose UI.
