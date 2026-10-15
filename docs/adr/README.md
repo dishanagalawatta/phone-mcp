@@ -39,3 +39,4 @@
 | 0035 | Restart persistence for capability records | Accepted | 2026-10-15 |
 | 0036 | USB transport is host-side `adb forward`, not `adb reverse` | Accepted | 2026-10-15 |
 | 0037 | One-Button Full Agent Permission & UI Component Reorganization | Accepted | 2026-10-15 |
+| 0038 | Secure-screen (FLAG_SECURE) default OFF | Accepted | 2026-10-15 |

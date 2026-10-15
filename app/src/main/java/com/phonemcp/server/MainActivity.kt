@@ -54,12 +54,22 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Secure-screen default: set once; afterwards the dashboard toggle owns the
-        // flag reactively (secure default protects token/QR in mirrors/recents).
-        window.setFlags(
-            android.view.WindowManager.LayoutParams.FLAG_SECURE,
-            android.view.WindowManager.LayoutParams.FLAG_SECURE,
-        )
+        // Secure-screen default OFF (mirror-visible): set the flag only when the
+        // stored toggle says so; the dashboard switch owns it reactively after.
+        val secureStored = try {
+            getSharedPreferences(
+                com.phonemcp.server.presentation.DashboardViewModel.PREFS,
+                MODE_PRIVATE,
+            ).getBoolean(com.phonemcp.server.presentation.DashboardViewModel.KEY_SECURE, false)
+        } catch (_: Exception) {
+            false
+        }
+        if (secureStored) {
+            window.setFlags(
+                android.view.WindowManager.LayoutParams.FLAG_SECURE,
+                android.view.WindowManager.LayoutParams.FLAG_SECURE,
+            )
+        }
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.RESUMED) { viewModel.refresh() }
         }

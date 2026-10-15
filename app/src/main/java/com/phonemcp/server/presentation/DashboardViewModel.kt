@@ -56,7 +56,7 @@ data class DashboardUiState(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val accessibilityOn: Boolean = false,
     /** When true the window is hidden from mirrors/recents (scrcpy shows black). Default ON. */
-    val secureScreen: Boolean = true,
+    val secureScreen: Boolean = false,
     /**
      * True once the user granted the QS-tile add prompt (or it was already
      * added). Headless `adb … click-tile` start/stop silently no-ops until
@@ -93,7 +93,7 @@ data class DashboardNetSnapshot(
     val permissions: Map<String, Boolean> = emptyMap(),
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val accessibilityOn: Boolean = false,
-    val secureScreen: Boolean = true,
+    val secureScreen: Boolean = false,
     val tileAdded: Boolean = false,
 )
 
@@ -267,9 +267,9 @@ class DashboardViewModel @Inject constructor(
     }
 
     private fun readSecureScreen(): Boolean = try {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_SECURE, true)
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_SECURE, false)
     } catch (_: Exception) {
-        true
+        false
     }
 
     private fun readTileAdded(): Boolean = try {

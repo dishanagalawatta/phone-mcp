@@ -75,7 +75,7 @@ Agents connect via `POST https://<phone-lan-ip>:8080/mcp` (JSON-RPC 2.0, Streama
 - **Secure by default** — bearer token (EncryptedSharedPreferences, QR pairing, one-tap rotation); TLS-only listener with fail-closed TOFU fingerprint; LAN-only bind + Origin check.
 - **Standard MCP endpoint** — `initialize`, `tools/list` (47 static tools + dynamic `ext_*`), `tools/call`, `ping`; tool failures return `isError:true`, protocol errors only `-32601/-32602/-32603` (+ `-32001` auth, `-32600` transport).
 - **Guardrailed** — kill-switches default OFF for `audio_*`, `camera_*`, `net_*`, `ui_*`, `ext_*` (third-party), and `ble_write`; runtime permission explainers in the dashboard.
-- **Modern dashboard** — Compose Material3 + Material You dynamic color, System/Light/Dark mode, server hero card, pairing QR, live tool-call log, QS-tile/widget pins. Secure window (`FLAG_SECURE`) so token/QR never leak into mirrors or recents.
+- **Modern dashboard & modular UI** — Compose Material3 + Material You dynamic color, System/Light/Dark mode, one-button agent access command card, server hero card, pairing QR, live tool-call log, QS-tile/widget pins. Mirror-visible by default; Secure screen switch (`FLAG_SECURE`, Settings → Appearance) hides token/QR from mirrors/recents when enabled.
 - **Clean layers** — pure-Kotlin `mcp/` (no `android.*`, JVM unit-testable) → `domain/` contracts → `data/` framework → `service/` Ktor foreground service → `presentation/` Compose UI.
 - **Harness-ready** — unified `phone-mcp` client (Python + zero-dep Node twins, parity-tested) and stdio bridge fallback for OpenCode, Claude Code/Desktop, Codex, VS Code, Cursor, Gemini CLI, Cline, and Windsurf.
 
@@ -229,7 +229,7 @@ Local-only. Full reference: `docs/environments.md` + `.env.example`.
 | Symptom | Fix |
 |---|---|
 | Sound comes from computer, not phone | Screen-mirror with audio forwarding (e.g. `scrcpy`) captured it — check `speaker_say`'s `output` for `remote_submix(mirrored)`. Re-run mirror with `--no-audio` or stop it. |
-| Black screen in scrcpy / mirror | Dashboard uses secure window (`FLAG_SECURE`) so token/QR never leak. Settings → Appearance → **Secure screen OFF** to drive over mirror (re-enable afterwards). |
+| Black screen in scrcpy / mirror | Secure screen got re-enabled (Settings → Appearance → Secure screen). Turn it OFF to drive over mirror; default is OFF (mirror-visible), re-enable only when you need token/QR hidden. |
 | Empty `tools/list` | Service not started or providers not bound — check dashboard log + `GET /healthz`. |
 | Camera/mic `SecurityException` | Grant runtime perm while app is foreground; keep FGS notification visible (API 34 while-in-use). |
 | Clipboard null on API 29+ | Read only works while app is focused; `clipboard_set` works headless. |

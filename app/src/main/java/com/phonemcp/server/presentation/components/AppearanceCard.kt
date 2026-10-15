@@ -38,7 +38,7 @@ import com.phonemcp.server.presentation.theme.ThemeMode
 fun AppearanceCard(
     themeMode: ThemeMode,
     onThemeChange: (ThemeMode) -> Unit,
-    secureScreen: Boolean = true,
+    secureScreen: Boolean = false,
     onSecureChange: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
