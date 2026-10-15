@@ -3,6 +3,8 @@
 All notable changes. Format: Keep a Changelog.
 
 ## [Unreleased]
+
+## [0.2.0] - 2026-10-15
 ### Added
 - Dynamic third-party capabilities over local IPC (ADR-0032…0035): other apps register tool bundles via bound-service Messenger, directory ContentProvider, or announce broadcast; namespaced `ext_<app>__<tool>` in `tools/list` with `listChanged:true`, `GET /mcp/events` SSE push, default-deny `ext_` master switch + per-capability approval + signer-pin enforcement, encrypted restart persistence; `capabilities_list/register/unregister/approve/revoke/rescan` management tools (47 static tools total); `docs/external-capabilities.md` provider guide + zero-dep `sample-provider/` reference app; 226 JVM unit tests + on-device `ExternalE2EDeviceTest`, all live-proven vs test device (register→approve→invoke, SSE frames, kill-restart restore)
 - Agent skill coverage for dynamic capabilities: router skill routes `ext_*` to new `references/external-apps.md` playbook; bundles re-synced, `verify-skills.py` green

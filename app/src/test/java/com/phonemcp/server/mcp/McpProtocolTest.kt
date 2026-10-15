@@ -8,7 +8,7 @@ class McpProtocolTest {
     @Test
     fun singleSourceOfTruth() {
         assertEquals("phone-mcp", McpProtocol.SERVER_NAME)
-        assertEquals("0.1.0", McpProtocol.SERVER_VERSION)
+        assertEquals("0.2.0", McpProtocol.SERVER_VERSION)
         assertEquals(listOf("2025-03-26", "2025-06-18"), McpProtocol.SUPPORTED_VERSIONS)
         assertEquals("2025-06-18", McpProtocol.LATEST_VERSION)
         // Legacy aliases stay in sync for callers/tests.

@@ -18,8 +18,8 @@ android {
         minSdk = 29
         targetSdk = 35
         // First Play upload: versionCode 1. Bump +1 on EVERY Play release (see docs/play-release.md).
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
