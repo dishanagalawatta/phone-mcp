@@ -35,5 +35,43 @@ class DashboardCategoryTest {
         assertEquals(false, state.vpnRunning)
         assertTrue(state.urls.isEmpty())
         assertTrue(state.log.isEmpty())
+        assertEquals(false, state.allGatesEnabled)
+        assertEquals(false, state.allPermissionsGranted)
+        assertEquals(false, state.hasFullAgentAccess)
+        assertEquals(0, state.activeGateCount)
+        assertEquals(0, state.grantedPermissionCount)
+    }
+
+    @Test
+    fun dashboardUiStateFullAccessCalculation() {
+        val allGatesOn = DashboardUiState(
+            micEnabled = true,
+            cameraEnabled = true,
+            locationEnabled = true,
+            bleWriteEnabled = true,
+            uiEnabled = true,
+            netEnabled = true,
+            externalEnabled = true,
+            permissions = mapOf("android.permission.CAMERA" to true, "android.permission.RECORD_AUDIO" to true),
+            accessibilityOn = true,
+        )
+        assertTrue(allGatesOn.allGatesEnabled)
+        assertTrue(allGatesOn.allPermissionsGranted)
+        assertTrue(allGatesOn.hasFullAgentAccess)
+        assertEquals(7, allGatesOn.activeGateCount)
+        assertEquals(2, allGatesOn.grantedPermissionCount)
+
+        val missingPerm = allGatesOn.copy(
+            permissions = mapOf("android.permission.CAMERA" to true, "android.permission.RECORD_AUDIO" to false),
+        )
+        assertTrue(missingPerm.allGatesEnabled)
+        assertEquals(false, missingPerm.allPermissionsGranted)
+        assertEquals(false, missingPerm.hasFullAgentAccess)
+        assertEquals(1, missingPerm.grantedPermissionCount)
+
+        val a11yOff = allGatesOn.copy(accessibilityOn = false)
+        assertTrue(a11yOff.allGatesEnabled)
+        assertTrue(a11yOff.allPermissionsGranted)
+        assertEquals(false, a11yOff.hasFullAgentAccess)
     }
 }

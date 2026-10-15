@@ -102,4 +102,18 @@ class DashboardUiTest {
         compose.waitUntil(timeoutMillis = 10_000) { TokenStore(context).current() != before }
         compose.onNodeWithText(before, substring = false).assertDoesNotExist()
     }
+
+    @Test
+    fun oneButtonGrantsAndRevokesFullAgentAccess() {
+        compose.onNodeWithTag("btn_grant_full_access").performClick()
+        compose.waitUntil(timeoutMillis = 5_000) {
+            compose.onAllNodesWithTag("btn_revoke_full_access")
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithTag("btn_revoke_full_access").performClick()
+        compose.waitUntil(timeoutMillis = 5_000) {
+            compose.onAllNodesWithTag("btn_grant_full_access")
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+    }
 }

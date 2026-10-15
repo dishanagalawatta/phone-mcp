@@ -3,6 +3,13 @@
 All notable changes. Format: Keep a Changelog.
 
 ## [Unreleased]
+### Added
+- One-Button Autonomous Agent Permission (ADR-0037): added `AgentAccessCard` providing single-tap full agent autonomy ("⚡ Grant Full Agent Access") that enables all 7 hardware kill-switches (`Gatekeeper.enableAll()`), approves external capabilities, triggers Android runtime permission requests for any missing grants, and offers a direct deep-link to Accessibility Settings when UI automation is unconfigured.
+- Immediate safe-mode lockdown button ("Revoke All (Safe Mode)") on `AgentAccessCard` that returns all hardware gates to restricted mode in one tap.
+- Batch quick-actions ("Enable all" / "Disable all") in `SecurityGuardrailsCard` for hardware kill-switch management.
+- Pure-Kotlin access calculation properties on `DashboardUiState` (`allGatesEnabled`, `allPermissionsGranted`, `hasFullAgentAccess`, `activeGateCount`, `grantedPermissionCount`).
+- `oneButtonGrantsAndRevokesFullAgentAccess` instrumented UI test in `DashboardUiTest`.
+- Extracted `DashboardCategory` enum to its own dedicated file `presentation/DashboardCategory.kt`.
 
 ## [0.2.0] - 2026-10-15
 ### Added

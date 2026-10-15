@@ -209,6 +209,32 @@ class DashboardViewModel @Inject constructor(
     /** Master switch for third-party proxied tools (`ext_*`). Default OFF. */
     fun setExternalEnabled(enabled: Boolean) = gatekeeper.setEnabled(Gatekeeper.TOOLS_EXT, enabled)
 
+    /** Enables all Gatekeeper kill-switches and approves any registered external capabilities. */
+    fun enableAllGates() {
+        gatekeeper.enableAll()
+        externalRegistry.snapshot.value.forEach {
+            externalRegistry.setApproved(it.id, true, forceLocal = true)
+        }
+        tick.value += 1
+    }
+
+    /** Disables all Gatekeeper kill-switches to restore restricted safe mode. */
+    fun disableAllGates() {
+        gatekeeper.disableAll()
+        tick.value += 1
+    }
+
+    /**
+     * One-action full permission workflow for agents:
+     * 1. Enables all hardware kill-switches.
+     * 2. Approves external capabilities.
+     * 3. Returns missing runtime permissions so the caller (Activity) can launch the system dialog if needed.
+     */
+    fun grantFullAgentAccess(): Array<String> {
+        enableAllGates()
+        return missingPermissions()
+    }
+
     /** Removes a third-party capability (dashboard owner action, bearer-gated by the app itself). */
     fun unregisterExternal(capabilityId: String) {
         externalRegistry.unregister(capabilityId, forceLocal = true)

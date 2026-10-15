@@ -16,7 +16,7 @@ hardware/emulators; run top to bottom, tick off per API level.
 
 1. `./scripts/setup.sh` → JDK 17, SDK present, `adb` reachable.
 2. Open in Android Studio → sync (installs wrapper + SDK 35) → `./gradlew testDebugUnitTest` → all green.
-3. Install + launch → grant every permission the dashboard asks for → enable mic/camera/location toggles → Start.
+3. Install + launch → tap **⚡ Grant Full Agent Access** (or grant permissions and enable mic/camera/location toggles individually) → Start.
 4. `./scripts/verify-mcp.sh <lan-ip>:8080` → `initialize`, `tools/list` (47 tools), `vibrate` 200,
    `GET /mcp` → 405, `/info` count, `battery_read`, `sensors_read` (emulator: mostly `unavailable` — correct),
    `audio_record` 2 s → `full:200` + `range:206`, `net_status` (+ `net_geo_lookup`/`net_blocklist_check`

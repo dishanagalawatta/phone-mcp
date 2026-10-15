@@ -118,6 +118,33 @@ class MainActivity : ComponentActivity() {
                     },
                     onCopy = viewModel::copyToClipboard,
                     onRotateToken = viewModel::rotateToken,
+                    onGrantFullAgentAccess = {
+                        val missing = viewModel.grantFullAgentAccess()
+                        if (missing.isNotEmpty()) {
+                            permissionLauncher.launch(missing)
+                        } else if (!state.accessibilityOn) {
+                            android.widget.Toast.makeText(
+                                this,
+                                "Hardware gates enabled. Enable Accessibility Service for UI automation.",
+                                android.widget.Toast.LENGTH_LONG,
+                            ).show()
+                            startActivity(Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                        } else {
+                            android.widget.Toast.makeText(
+                                this,
+                                "Full agent access active (all gates + permissions enabled)",
+                                android.widget.Toast.LENGTH_SHORT,
+                            ).show()
+                        }
+                    },
+                    onRevokeFullAgentAccess = {
+                        viewModel.disableAllGates()
+                        android.widget.Toast.makeText(
+                            this,
+                            "All hardware gates reset to restricted safe mode",
+                            android.widget.Toast.LENGTH_SHORT,
+                        ).show()
+                    },
                 )
             }
         }

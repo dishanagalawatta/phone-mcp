@@ -23,6 +23,18 @@ class Gatekeeper @Inject constructor() {
         _disabled.update { if (enabled) it - categoryPrefix else it + categoryPrefix }
     }
 
+    fun enableAll() {
+        _disabled.update { emptySet() }
+    }
+
+    fun disableAll() {
+        _disabled.update { ALL_TOOLS }
+    }
+
+    fun areAllEnabled(): Boolean = _disabled.value.isEmpty()
+
+    fun areAllDisabled(): Boolean = ALL_TOOLS.all { _disabled.value.contains(it) }
+
     companion object {
         const val TOOLS_MIC = "audio_"
         const val TOOLS_CAMERA = "camera_"
@@ -37,5 +49,16 @@ class Gatekeeper @Inject constructor() {
          * dashboard. Management tools (`capabilities_*`) stay ungated.
          */
         const val TOOLS_EXT = "ext_"
+
+        /** Set of all gated tool categories controlled by Gatekeeper. */
+        val ALL_TOOLS: Set<String> = setOf(
+            TOOLS_MIC,
+            TOOLS_CAMERA,
+            TOOLS_LOCATION,
+            TOOLS_BLEWRITE,
+            TOOLS_UI,
+            TOOLS_NET,
+            TOOLS_EXT,
+        )
     }
 }

@@ -34,8 +34,8 @@ You need: an Android device (API 29+), a computer on the **same Wi-Fi**, and the
 
 ```bash
 # 1. Install + start (on phone)
-# Install release/phone-mcp-v0.2.0-debug.apk, open "Phone MCP", grant Camera/Mic/Location/BLE/Notifications,
-# enable the toggles you need, tap Start. Note the IP:port shown.
+# Install release/phone-mcp-v0.2.0-debug.apk, open "Phone MCP", tap "⚡ Grant Full Agent Access"
+# (or grant Camera/Mic/Location/BLE/Notifications and toggles individually), tap Start. Note the IP:port shown.
 
 # 2. Verify (from your computer, same LAN)
 export TOKEN=<paste-from-dashboard-pairing-card>
@@ -74,7 +74,7 @@ Agents connect via `POST https://<phone-lan-ip>:8080/mcp` (JSON-RPC 2.0, Streama
 
 - **Secure by default** — bearer token (EncryptedSharedPreferences, QR pairing, one-tap rotation); TLS-only listener with fail-closed TOFU fingerprint; LAN-only bind + Origin check.
 - **Standard MCP endpoint** — `initialize`, `tools/list` (47 static tools + dynamic `ext_*`), `tools/call`, `ping`; tool failures return `isError:true`, protocol errors only `-32601/-32602/-32603` (+ `-32001` auth, `-32600` transport).
-- **Guardrailed** — kill-switches default OFF for `audio_*`, `camera_*`, `net_*`, `ui_*`, `ext_*` (third-party), and `ble_write`; runtime permission explainers in the dashboard.
+- **One-tap agent permissions & guardrails** — One button (**⚡ Grant Full Agent Access**) activates all 7 hardware gates, requests missing runtime permissions, and approves third-party tools in a single tap; instant safe-mode revoke; granular individual kill-switches default OFF for `audio_*`, `camera_*`, `net_*`, `ui_*`, `ext_*`, and `ble_write`.
 - **Modern dashboard & modular UI** — Compose Material3 + Material You dynamic color, System/Light/Dark mode, one-button agent access command card, server hero card, pairing QR, live tool-call log, QS-tile/widget pins. Mirror-visible by default; Secure screen switch (`FLAG_SECURE`, Settings → Appearance) hides token/QR from mirrors/recents when enabled.
 - **Clean layers** — pure-Kotlin `mcp/` (no `android.*`, JVM unit-testable) → `domain/` contracts → `data/` framework → `service/` Ktor foreground service → `presentation/` Compose UI.
 - **Harness-ready** — unified `phone-mcp` client (Python + zero-dep Node twins, parity-tested) and stdio bridge fallback for OpenCode, Claude Code/Desktop, Codex, VS Code, Cursor, Gemini CLI, Cline, and Windsurf.
@@ -115,8 +115,8 @@ cp .env.example .env   # never commit .env / local.properties / keystores
 
 ```bash
 adb install -r release/phone-mcp-v0.2.0-debug.apk   # prebuilt + signed (44 MB, v0.2.0); or rebuild below
-# Launch "Phone MCP", grant runtime perms (Camera, Mic, Location, BLE, Notifications),
-# enable mic/camera toggles, tap Start. Note IP:port shown.
+# Launch "Phone MCP", tap "⚡ Grant Full Agent Access" (or grant runtime perms
+# and toggles individually), tap Start. Note IP:port shown.
 ```
 
 Rebuild from source (same output at `app/build/outputs/apk/debug/app-debug.apk`):
@@ -178,7 +178,7 @@ Layers: presentation/ (Compose) · mcp/ (pure Kotlin JSON-RPC) · domain/ (ToolP
 
 Request lifecycle: `POST /mcp` → Origin check → version negotiate → `initialize` → `tools/call {name, args}` → permission + kill-switch gate → provider suspend fun (5s sensors / 30s capture) → `result {content[], isError}` or JSON-RPC error (`-32601/-32602/-32603`).
 
-See `docs/adr/` (ADR-0001…0030) for transport, TLS engine, protocol, media, auth, dashboard safety, VPN inspection, UI redesign, bridge, CA export, client, and agent-skills decisions.
+See `docs/adr/` (ADR-0001…0038) for transport, TLS engine, protocol, media, auth, dashboard safety, VPN inspection, UI redesign, bridge, CA export, client, dynamic capabilities, USB forwarding, agent permissions, and secure screen decisions.
 
 ## Configuration
 
@@ -190,7 +190,7 @@ Local-only. Full reference: `docs/environments.md` + `.env.example`.
 | `PHONE_MCP_HOST` (`ServerConfig.host`) | Bind (keep `0.0.0.0` LAN) | `0.0.0.0` |
 | `PHONE_MCP_TOKEN` / `TOKEN` | Bearer token (dashboard pairing card) | — (required) |
 | Media TTL / cap (`FileMediaStore`) | Sidecar eviction | `15 min / 100 MB` |
-| Kill-switches (`Gatekeeper`) | `audio_*`, `camera_*`, `net_*`, `ui_*` default OFF | OFF |
+| Kill-switches (`Gatekeeper`) | `audio_*`, `camera_*`, `net_*`, `ui_*`, `ext_*`, `ble_write` default OFF (one-tap batch enablement via **⚡ Grant Full Agent Access**) | OFF |
 
 ## Documentation
 
@@ -203,7 +203,7 @@ Local-only. Full reference: `docs/environments.md` + `.env.example`.
 | 🧪 Run conformance / fuzz / proofs | `scripts/verify-mcp.sh`, `scripts/fuzz-mcp.py` (12/12), `scripts/phone-mcp-smoke.py`, `scripts/collect-proofs.sh`, `scripts/configure-harness.sh`, `scripts/export-ca.sh` |
 | ⚙️ Set up local env + signing | `docs/environments.md`, `.env.example` |
 | 🎨 Match the UI / brand | `DESIGN.md`, `docs/branding.md`, `assets/logo/`, `docs/assets/screenshots/` |
-| 🏛️ Understand decisions | `docs/adr/` (ADR-0001…0030) |
+| 🏛️ Understand decisions | `docs/adr/` (ADR-0001…0038) |
 | 🤖 Work as an agent in this repo | `AGENTS.md` |
 | 🧠 Teach an agent the built-in tools (6 skills, 47/47 coverage) | `.agents/skills/phone-mcp*/` (router + sense/capture/wireless/ui/net), `scripts/verify-skills.py`, `docs/adr/0030-agent-skills.md` — `phone-mcp configure` stages + installs them automatically (ADR-0031) |
 | 🔌 Let other apps publish tools (dynamic capabilities) | `docs/external-capabilities.md`, `docs/adr/0032-dynamic-capabilities.md` — bound-service / directory-provider / announce-broadcast IPC + `capabilities_*` management tools |

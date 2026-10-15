@@ -30,6 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.phonemcp.server.presentation.components.ActivityConsoleCard
+import com.phonemcp.server.presentation.components.AgentAccessCard
 import com.phonemcp.server.presentation.components.AgentPairingCard
 import com.phonemcp.server.presentation.components.AppearanceCard
 import com.phonemcp.server.presentation.components.ExternalCapabilitiesCard
@@ -39,19 +40,6 @@ import com.phonemcp.server.presentation.components.SecurityGuardrailsCard
 import com.phonemcp.server.presentation.components.ServerHeroCard
 import com.phonemcp.server.presentation.components.SystemHealthCard
 import com.phonemcp.server.presentation.theme.ThemeMode
-
-/**
- * High-level category filters for the dashboard.
- * Defaults to ALL to ensure complete hierarchy visibility for both users and automated tests.
- */
-enum class DashboardCategory(val title: String) {
-    ALL("Overview"),
-    SERVER("Server & Auth"),
-    GUARDRAILS("Guardrails"),
-    NETWORK("Network"),
-    CONSOLE("Console"),
-    SETTINGS("Settings"),
-}
 
 /**
  * Modern, clean, professional, and sleek Dashboard interface for Phone MCP.
@@ -83,6 +71,8 @@ fun DashboardScreen(
     onCopy: (label: String, text: String) -> Unit,
     onRotateToken: () -> Unit,
     onSecureChange: (Boolean) -> Unit = {},
+    onGrantFullAgentAccess: () -> Unit = {},
+    onRevokeFullAgentAccess: () -> Unit = {},
 ) {
     var selectedCategory by rememberSaveable { mutableStateOf(DashboardCategory.ALL) }
     val scrollState = rememberScrollState()
@@ -160,6 +150,16 @@ fun DashboardScreen(
                     )
                 }
 
+                // One-Button Autonomous Agent Full Permission Command Card
+                if (selectedCategory == DashboardCategory.ALL || selectedCategory == DashboardCategory.GUARDRAILS || selectedCategory == DashboardCategory.SETTINGS) {
+                    AgentAccessCard(
+                        state = state,
+                        onGrantFullAccess = onGrantFullAgentAccess,
+                        onRevokeFullAccess = onRevokeFullAgentAccess,
+                        onOpenAccessibilitySettings = onOpenAccessibilitySettings,
+                    )
+                }
+
                 // Agent Pairing & Authentication Card
                 if (selectedCategory == DashboardCategory.ALL || selectedCategory == DashboardCategory.SERVER) {
                     AgentPairingCard(
@@ -189,6 +189,8 @@ fun DashboardScreen(
                         externalEnabled = state.externalEnabled,
                         onExternalToggle = onExternalToggle,
                         externalCount = state.externalCapabilities.size,
+                        onEnableAll = onGrantFullAgentAccess,
+                        onDisableAll = onRevokeFullAgentAccess,
                     )
                 }
 

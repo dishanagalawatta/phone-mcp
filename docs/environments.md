@@ -32,7 +32,7 @@ Open folder in Android Studio, let it provision Gradle wrapper + SDK 35, then Ru
 | `PHONE_MCP_KEYSTORE_*` | Release signing (file/password/alias/key password) | — (unset = debug signing, not for Play upload) |
 | `ANDROID_HOME` | SDK override (else `local.properties` `sdk.dir`) | `$HOME/Android/Sdk` |
 | Media TTL / cap (`FileMediaStore`) | sidecar eviction | `15 min / 100 MB` |
-| Kill-switches (`Gatekeeper`) | `audio_*`, `camera_*`, `net_*`, `ui_*` default OFF | OFF |
+| Kill-switches (`Gatekeeper`) | `audio_*`, `camera_*`, `net_*`, `ui_*`, `ext_*`, `ble_write` default OFF (batch-enabled via dashboard **⚡ Grant Full Agent Access**, ADR-0037) | OFF |
 
 USB note: over `adb forward` set `PHONE_MCP_URL=https://127.0.0.1:8080/mcp`
 (same `PHONE_MCP_TOKEN` + `PHONE_MCP_SHA256` as LAN — fingerprint identical;

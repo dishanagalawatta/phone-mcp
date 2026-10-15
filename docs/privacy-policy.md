@@ -31,8 +31,8 @@ the publisher or any third party. All network traffic stays on your local networ
 
 ## Your controls
 
-- Start/Stop the server, per-category kill-switches, and Android runtime permission
-  grants/revokes (system Settings → Apps → Phone MCP) take effect immediately.
+- Start/Stop the server, one-button full agent access grant/revoke ("⚡ Grant Full Agent Access" / "Revoke All (Safe Mode)", ADR-0037),
+  per-category kill-switches, and Android runtime permission grants/revokes (system Settings → Apps → Phone MCP) take effect immediately.
 - There is no account data to delete; to erase all cached media, stop the server or uninstall.
 
 ## Children

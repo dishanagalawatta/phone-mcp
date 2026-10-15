@@ -52,6 +52,8 @@ curl -sk -X POST https://192.168.1.50:8080/mcp \
 
 Success → `result {content[], isError:false}`. Tool-logic failure → `result {content[], isError:true}` naming the kill-switch/permission. Protocol errors only `-32601` (unknown method/tool) / `-32602` (bad args) / `-32603` (busy/internal) / `-32001` (auth) / `-32600` (transport gate).
 
+The dashboard includes a dedicated command card (**⚡ Grant Full Agent Access**) that unblocks all 7 hardware gates (`audio_*`, `camera_*`, `location_*`, `ble_write`, `ui_*`, `net_*`, `ext_*`), requests missing Android runtime permissions, and approves external capabilities in a single tap, alongside a matching "Revoke All (Safe Mode)" kill-switch (ADR-0037).
+
 ## Agent harnesses
 
 Harnesses (OpenCode, Claude Code/Desktop, Codex, VS Code, Cursor, Gemini CLI,

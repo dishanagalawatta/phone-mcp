@@ -273,5 +273,5 @@ self-signed cert **after** fingerprint verification (same TOFU step as §1).
 | `remote_submix(mirrored)` audio | Screen-mirror forwards phone audio → re-run mirror with `--no-audio`. |
 
 Security notes: TLS-only + Bearer everywhere except `/healthz`; kill-switches
-(`audio_*`, `camera_*`, `net_*`, `ui_*`) default OFF — enable on the dashboard
-before calling gated tools; run only on networks you trust (ADR-0006/0009/0010).
+(`audio_*`, `camera_*`, `net_*`, `ui_*`, `ext_*`, `ble_write`) default OFF — tap **⚡ Grant Full Agent Access**
+(or individual switches) on the dashboard before calling gated tools; run only on networks you trust (ADR-0006/0009/0010/0037).

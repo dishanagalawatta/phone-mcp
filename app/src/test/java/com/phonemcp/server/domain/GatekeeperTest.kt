@@ -42,4 +42,34 @@ class GatekeeperTest {
         assertTrue(gatekeeper.isAllowed("ble_write_extended"))
         assertTrue(gatekeeper.isAllowed("ble_writer"))
     }
+
+    @Test
+    fun enableAllUnblocksAllToolsAndReportsState() {
+        val gatekeeper = Gatekeeper()
+        assertTrue(gatekeeper.areAllDisabled())
+        assertFalse(gatekeeper.areAllEnabled())
+
+        gatekeeper.enableAll()
+        assertTrue(gatekeeper.areAllEnabled())
+        assertFalse(gatekeeper.areAllDisabled())
+
+        assertTrue(gatekeeper.isAllowed("audio_record"))
+        assertTrue(gatekeeper.isAllowed("camera_capture"))
+        assertTrue(gatekeeper.isAllowed("location_read"))
+        assertTrue(gatekeeper.isAllowed("ble_write"))
+        assertTrue(gatekeeper.isAllowed("ui_screenshot"))
+        assertTrue(gatekeeper.isAllowed("net_status"))
+        assertTrue(gatekeeper.isAllowed("ext_notes__search"))
+
+        gatekeeper.disableAll()
+        assertTrue(gatekeeper.areAllDisabled())
+        assertFalse(gatekeeper.areAllEnabled())
+        assertFalse(gatekeeper.isAllowed("audio_record"))
+        assertFalse(gatekeeper.isAllowed("camera_capture"))
+        assertFalse(gatekeeper.isAllowed("location_read"))
+        assertFalse(gatekeeper.isAllowed("ble_write"))
+        assertFalse(gatekeeper.isAllowed("ui_screenshot"))
+        assertFalse(gatekeeper.isAllowed("net_status"))
+        assertFalse(gatekeeper.isAllowed("ext_notes__search"))
+    }
 }

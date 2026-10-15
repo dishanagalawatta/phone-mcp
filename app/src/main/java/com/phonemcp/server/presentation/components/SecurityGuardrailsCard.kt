@@ -16,6 +16,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -45,6 +46,8 @@ fun SecurityGuardrailsCard(
     externalEnabled: Boolean = false,
     onExternalToggle: (Boolean) -> Unit = {},
     externalCount: Int = 0,
+    onEnableAll: () -> Unit = {},
+    onDisableAll: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     ElevatedCard(
@@ -60,19 +63,42 @@ fun SecurityGuardrailsCard(
                 .fillMaxWidth()
                 .padding(20.dp),
         ) {
-            Text(
-                text = "Privacy & Hardware Gates",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = "Agent access (kill-switches)",
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.SemiBold,
-                ),
-                color = MaterialTheme.colorScheme.onSurface,
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Column {
+                    Text(
+                        text = "Privacy & Hardware Gates",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Agent access (kill-switches)",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                        ),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(
+                        onClick = onEnableAll,
+                        modifier = Modifier.testTag("guardrails_enable_all"),
+                    ) {
+                        Text("Enable all", fontSize = 12.sp)
+                    }
+                    TextButton(
+                        onClick = onDisableAll,
+                        modifier = Modifier.testTag("guardrails_disable_all"),
+                    ) {
+                        Text("Disable all", fontSize = 12.sp)
+                    }
+                }
+            }
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = "Turn off any switch to immediately sever agent access to that hardware capability.",

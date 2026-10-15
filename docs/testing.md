@@ -17,8 +17,9 @@ and a device proof (`scripts/verify-mcp.sh` step or Inspector call per `docs/dev
   serves 41 tools + live VPN capture on-device.
 
 
-- **JVM: 226/226** (`testDebugUnitTest`), `lintDebug` 0 errors (incl. `BleGattTest`
-  CCCD/message vectors, `ConfirmTextTest` guard copy, `GatekeeperTest`, arg-parser suites,
+- **JVM: 228/228** (`testDebugUnitTest`), `lintDebug` 0 errors (incl. `BleGattTest`
+  CCCD/message vectors, `ConfirmTextTest` guard copy, `GatekeeperTest` `enableAll`/`disableAll` suites,
+  `DashboardCategoryTest` full access calculations, arg-parser suites,
   plus the dynamic-capability suites below).
 - **Physical test device (API 34, hardware): 17/18.** Only `nfcTap` red — it needs a human holding
   a tag during its 45 s window (proven green with a live tap: NXP UID + NDEF). Everything
@@ -40,8 +41,8 @@ and a device proof (`scripts/verify-mcp.sh` step or Inspector call per `docs/dev
   DNS resolves through the tunnel, plain HTTP 200 relays with host attribution,
   system DNS-over-TLS (`8.8.8.8:853`) and QUIC (`8.8.8.8:443`, bidirectional
   bytes) flow through the relay, `ip6-58` multicast captured. No human needed —
-  VPN consent approved via UI tap. Prior emulator result: DashboardUiTest 3/3
-  (found + fixed along the way: the Rotate button sat below the fold — dashboard is now
+  VPN consent approved via UI tap. Prior emulator result: `DashboardUiTest` 4/4
+  (including `oneButtonGrantsAndRevokesFullAgentAccess`; the Rotate button sat below the fold — dashboard is now
   scrollable; the test scrolls explicitly; rotation emits a logcat marker).
 - LAN HTTPS battery from host: init/list(21)/20 tools/media round-trips/SSE (17 events)/
   401-405-400/`-32601`/`-32602` shapes green; TOFU fingerprint matched 4 ways and stable
