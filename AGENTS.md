@@ -45,7 +45,9 @@ Co-Authored-By: Muse Spark 1.3 Free <noreply@example.com>
 
 ## Key Files
 - `mcp/McpRouter.kt` — dispatcher
-- `domain/{ToolProvider,Gatekeeper,MediaStore}.kt` — contracts
+- `mcp/{CapabilityIpcContract,ExternalCapabilityRegistry,CapabilitySnapshots}.kt` — dynamic third-party registry (ADR-0032/34/35); pure Kotlin, JVM-tested
+- `domain/{ToolProvider,Gatekeeper,MediaStore,ExternalToolInvoker}.kt` — contracts
+- `sample-provider/` — zero-dep reference provider app (demo: echo/add/time) + `ExternalE2EDeviceTest` on-device IPC proof
 - `client/src/phone_mcp_client/` — unified harness-side client, Python twin (`phone-mcp` CLI; canonical TLS/harness logic, parity-tested vs `bridges/`)
 - `client/node/src/` — unified client, Node twin (zero-dep `phone-mcp` bin; same CLI; parity-tested vs bridge)
 - `.agents/skills/phone-mcp*/` — 6 agent skills (router + sense/capture/wireless/ui/net); SOURCE OF TRUTH — after editing, re-copy each tree into `client/src/phone_mcp_client/skills/` + `client/node/skills/` (gate: `scripts/verify-skills.py` bundle-sync checks); `configure` stages/installs them, never hand-edit bundles
