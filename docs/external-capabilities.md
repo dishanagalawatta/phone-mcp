@@ -20,6 +20,11 @@ call `heartbeat` to stay listed), 25 s per-invocation bound.
 
 ## Option A — bound service (recommended, invocation + registration)
 
+A complete working example lives in `sample-provider/` (zero-dependency
+`SampleProviderService` + one-screen announcer; install it and
+`capabilities_rescan` to see the full loop). It exposes `demo: echo, add,
+time` — the same app the on-device E2E (`ExternalE2EDeviceTest`) exercises.
+
 Expose a `Service` answering `com.phonemcp.server.action.PROVIDE_CAPABILITY`:
 
 ```xml

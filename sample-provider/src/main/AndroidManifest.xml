@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application
+        android:allowBackup="false"
+        android:label="Phone MCP Sample Provider">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Capability endpoint bound explicitly by Phone MCP (no one else
+             should bind: package-scoped explicit intent on their side). -->
+        <service
+            android:name=".SampleProviderService"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.phonemcp.server.action.PROVIDE_CAPABILITY" />
+            </intent-filter>
+        </service>
+    </application>
+</manifest>

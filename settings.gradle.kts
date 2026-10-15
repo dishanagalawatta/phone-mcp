@@ -14,3 +14,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "phone-mcp"
 include(":app")
+include(":sample-provider")
