@@ -36,3 +36,4 @@
 | 0032 | Dynamic third-party capabilities over local IPC | Accepted | 2026-10-15 |
 | 0033 | Server-push for capability list changes over SSE | Accepted | 2026-10-15 |
 | 0034 | Per-capability consent and signer pinning | Accepted | 2026-10-15 |
+| 0035 | Restart persistence for capability records | Accepted | 2026-10-15 |

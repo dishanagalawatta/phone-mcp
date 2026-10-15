@@ -16,7 +16,9 @@ Full decision record: `docs/adr/0032-dynamic-capabilities.md`.
 | `capabilitiesVersion` | Monotonic counter in `serverInfo`/`GET /info`/`capabilities_list`; bumps on every list change |
 
 Limits: 32 capabilities, 16 tools each, 120 s heartbeat TTL (re-announce or
-call `heartbeat` to stay listed), 25 s per-invocation bound.
+call `heartbeat` to stay listed), 25 s per-invocation bound. Records
+(including approval and signer pins) persist across restarts in encrypted
+storage; restored entries get a fresh heartbeat window.
 
 ## Option A — bound service (recommended, invocation + registration)
 
