@@ -7,7 +7,7 @@ description: Use when connecting to Phone MCP, pairing a phone, diagnosing trans
 
 ## Overview
 
-Connect an agent to an Android phone exposing 41 tools over LAN HTTPS MCP. Pair once, verify transport, then delegate to a domain skill.
+Connect an agent to an Android phone exposing 47 static tools plus dynamic third-party `ext_*` tools over LAN HTTPS MCP. Pair once, verify transport, then delegate to a domain skill.
 
 ## Preconditions
 
@@ -27,7 +27,7 @@ Prefer the `phone-mcp` CLI over raw curl. Raw clients must send `MCP-Protocol-Ve
 
 ### 2. Respect guardrails
 
-Check kill-switches before calling gated tools: `audio_*`, `camera_*`, `net_*`, `ui_*`, and `ble_write` default OFF. Enable on the dashboard. Request runtime permissions from the foreground (camera, mic, location on API 34). Never log tokens; log tool name, `isError`, and RPC code only.
+Check kill-switches before calling gated tools: `audio_*`, `camera_*`, `net_*`, `ui_*`, and `ble_write` default OFF. Third-party `ext_*` tools need the dashboard External switch ON plus per-capability approval (`capabilities_approve`). Enable on the dashboard. Request runtime permissions from the foreground (camera, mic, location on API 34). Never log tokens; log tool name, `isError`, and RPC code only.
 
 ### 3. Handle results and media
 
@@ -40,6 +40,7 @@ Distinguish domain failures (`result.isError:true` naming the kill-switch or per
 - Bluetooth LE or NFC taps: `phone-mcp-wireless`.
 - Screen observe and operate: `phone-mcp-ui`.
 - VPN capture, firewall, connection tables: `phone-mcp-net`.
+- Third-party app tools (`ext_*`, consent, live list changes): this skill only — see `references/external-apps.md` before calling them.
 
 Completion criterion: every phone tool call is covered by exactly one domain skill; this skill never issues domain calls itself.
 
@@ -50,3 +51,4 @@ Keep harness timeout at 60000 ms. Bridge ceiling is 35000 ms (30 s captures); fa
 ## Resources
 
 - `references/core-transport.md`: endpoints, TLS modes, curl shape, troubleshooting table.
+- `references/external-apps.md`: third-party capability discovery, two-gate calling convention, SSE push, trust notes.
